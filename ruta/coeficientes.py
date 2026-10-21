@@ -1,0 +1,84 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Base de coeficientes del modelo de ruta (A1). Versión 18-10-2026, ampliada el 19-10-2026 con la
+resistencia inducida por la fuerza lateral (e_span) y la fuerza lateral del viento sobre el buque (ayc).
+
+Rotor girando, CL(k) y CD(k), con k = U_superficie / U_aparente:
+  Conjunto A  De Marco et al. (2016), Fig. 10, URANS: AR = 6 y de/d = 2, la geometria del caso de estudio
+              (digitalizado de los vectores del PDF). Coincide con los ensayos de Badalamenti (AR 5,1,
+              de/d = 2; Seifert 2012, Figs. 21-24) y de Ackeret (Seifert 2012, Fig. 27). Re de modelo.
+  Conjunto B  Bordogna et al. (2019), Figs. 4 y 7: ensayos a Re 3,6e5-1e6 de pared a pared (casi 2D),
+              media de los puntos supercriticos, mas la resistencia inducida de un rotor de AR = 6 sobre
+              cubierta (AR efectivo 12 por la reflexion en la cubierta): CD_i = CL^2 / (pi * 12).
+  El modelo mezcla ambos con un peso w (w = 1: A; w = 0: B). El caso central usa w = 0,5.
+Rotor parado: CD0 0,4-0,7 (Bordogna, k = 0, Re >= 3,6e5: 0,44-0,56; Ackeret, Re bajo: 0,84).
+Potencia de giro: friccion del cilindro P = Cf * rho/2 * U_s^3 * pi * D * H, con Cf entre 0,002
+  (Theodorsen-Regier, cilindro liso a Re ~1e7) y 0,007 (Bordogna, ensayo con perdidas de extremo y mecanicas),
+  mas el disco de la placa de extremo (disco libre, CM = 0,146 Re^-0,2).
+Savonius: Cp 0,14-0,24 en tunel con cangilones semicirculares (Akwa et al. 2012, Tabla 1).
+  Empuje Ct 0,4-1,0: cota inferior cinematica de una maquina de arrastre, Ct >= Cp U / v_cangilon (~2,2 Cp a
+  lambda ~0,8); Chauvin y Benghrib (1989) dan 0,14-0,20 a lambda 0,6-1,0 integrando seis tomas de presion a media
+  altura; cota superior, la resistencia de un cuerpo romo de la misma area (supuesto).
+VAWT (21-10-2026): modelo DMST de ../turbina (mapa_turbina.json) con tres factores que salen de su validación
+  (validacion_dmst.py). f_cp_t 0,7-0,9: el Cp máximo medido en campo en el rotor H de 12 kW de Uppsala es 0,68-0,73
+  veces el del modelo y el de túnel de Battisti et al. (2018), 0,92 veces. f_ct_t 1,0-1,1: el modelo da el 89 % del
+  empuje medido en túnel cerca del máximo, que incluye el eje y los brazos del ensayo, no modelados. f_cs_t 0,6-1,0:
+  el modelo sobrestima la fuerza lateral del túnel en un 35 % cerca del máximo (en un 0-80 % en todo el ensayo).
+  Hasta el 19-10-2026 (versiones 1 y 2): Cp 0,20-0,30 y Cp/Ct 0,3-0,5, supuestos (RANGES_V2).
+Prolongacion: CL x0,6-1,0 respecto al rotor (la placa de extremo sube con ella en el caso 1,0).
+Buque: rendimiento propulsivo eta_D 0,65-0,75 y SFOC del motor principal 170-190 g/kWh.
+Resistencia inducida por la fuerza lateral (19-10-2026): dR = Fy^2 / (pi e q_w (2T)^2), ala de bajo alargamiento con
+  envergadura efectiva 2T (reflexion en la superficie libre). Bickert et al. (MARINE 2025) dan dR/R0 con Fy = 2 R0 a
+  escala real: KVLCC2 a 15,5 kn 6,7 % (3 GDL), KCS a 20 kn 10,0 % (3+1 GDL) y 21,1 % (4 GDL, escora de 15 grados).
+  Con R0 estimado por ITTC-78 (+-10 %), equivalen a e = 0,51-0,62, 0,43-0,52 y 0,20-0,25 (inferencia_e.py).
+  Rango 0,4-0,8 (central 0,6): la escora pesa poco con las fuerzas laterales de este buque.
+Fuerza lateral del viento sobre casco y superestructura: F_s = q_s (A_L C_Y,max) sin(beta_s), con A_L C_Y,max
+  3 000-6 000 m2 (supuesto: A_L ~ 5 000 m2 para 214,5 m de eslora y ~25 m de altura media sobre la flotacion,
+  C_Y,max 0,6-1,2). Solo cuenta por el termino cruzado de la resistencia inducida.
+"""
+import math
+import numpy as np
+
+K_A = [0.0, 1.0, 1.5, 2.0, 3.0]
+CL_A = [0.0, 1.807, 3.298, 5.451, 9.729]
+CD_A = [None, 0.891, 0.869, 1.465, 3.977]          # k = 0: CD0 del rotor parado
+
+K_B = [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0]
+CL_B = [0.0, 1.12, 2.20, 3.05, 3.85, 5.04, 5.58]
+CD_B2D = [0.51, 0.77, 1.03, 1.33, 1.61, 1.87, 2.16]
+AR_EFF_B = 12.0
+
+# Valor central = punto medio de cada rango (el Monte Carlo muestrea los rangos de forma uniforme).
+RANGES = dict(w=(0.0, 1.0), cd_mult=(0.8, 1.2), cd0=(0.4, 0.7), cf=(0.002, 0.007), cp_s=(0.14, 0.24),
+              ct_s=(0.4, 1.0), f_cp_t=(0.7, 0.9), f_ct_t=(1.0, 1.1), f_cs_t=(0.6, 1.0), cl_ext=(0.6, 1.0),
+              eta_d=(0.65, 0.75), sfoc_me=(170.0, 190.0), e_span=(0.4, 0.8), ayc=(3000.0, 6000.0))
+CENTRAL = {k: 0.5 * (a + b) for k, (a, b) in RANGES.items()}
+# rangos de las versiones anteriores, con la turbina supuesta (para reproducirlas)
+RANGES_V2 = dict(w=(0.0, 1.0), cd_mult=(0.8, 1.2), cd0=(0.4, 0.7), cf=(0.002, 0.007), cp_s=(0.14, 0.24),
+                 ct_s=(0.4, 1.0), cp_t=(0.20, 0.30), cpct_t=(0.3, 0.5), cl_ext=(0.6, 1.0),
+                 eta_d=(0.65, 0.75), sfoc_me=(170.0, 190.0), e_span=(0.4, 0.8), ayc=(3000.0, 6000.0))   # 19-10-2026
+RANGES_V1 = {k: v for k, v in RANGES_V2.items() if k not in ("e_span", "ayc")}                       # 18-10-2026
+
+
+def _interp(k, ks, vs):
+    return float(np.interp(k, ks, vs))
+
+
+def rotor_cl_cd(k, w=0.5, cd0=0.55, cd_mult=1.0):
+    """CL y CD del rotor girando a la relacion de giro k (0 <= k <= 3)."""
+    k = min(max(k, 0.0), 3.0)
+    cd_a = [cd0] + CD_A[1:]
+    cl_a, cd_a_k = _interp(k, K_A, CL_A), _interp(k, K_A, cd_a)
+    cl_b = _interp(k, K_B, CL_B)
+    cd_b = _interp(k, K_B, [cd0] + CD_B2D[1:]) + cl_b ** 2 / (math.pi * AR_EFF_B)
+    cl = w * cl_a + (1.0 - w) * cl_b
+    cd = w * cd_a_k + (1.0 - w) * cd_b
+    return cl, cd0 + (cd - cd0) * cd_mult if k > 0 else cd0
+
+
+if __name__ == "__main__":
+    print(" k    CL_A  CD_A   CL_B  CD_B   central CL  CD   L/D")
+    for k in (0.5, 1.0, 1.5, 2.0, 2.5, 3.0):
+        a = rotor_cl_cd(k, w=1.0); b = rotor_cl_cd(k, w=0.0); c = rotor_cl_cd(k)
+        print(f"{k:3.1f}  {a[0]:5.2f} {a[1]:5.2f}  {b[0]:5.2f} {b[1]:5.2f}   {c[0]:5.2f} {c[1]:5.2f} {c[0]/c[1]:5.2f}")

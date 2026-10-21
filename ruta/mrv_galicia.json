@@ -1,0 +1,44 @@
+{
+ "meta": {
+  "source": "EMSA THETIS-MRV, public emission reports (EU MRV, Regulation (EU) 2015/757), API /api/public-emission-report/details/{id}",
+  "url": "https://mrv.emsa.europa.eu/#public/emission-report",
+  "retrieved": "2026-10-18",
+  "ship": {
+   "name": "GALICIA",
+   "imo": "9856189",
+   "type": "Ro-pax ship",
+   "company_2024_2025": "Brittany Ferries BAI SA",
+   "port_of_registry": "Morlaix",
+   "technical_efficiency": "EEDI/EEXI 20.74",
+   "monitoring_method": "A (BDN and periodic stock takes)"
+  },
+  "file_versions": {
+   "2020": "v210 25-09-2026",
+   "2021": "v219 25-09-2026",
+   "2022": "v241 06-02-2026",
+   "2023": "v92 29-09-2026",
+   "2024": "v252 15-10-2026",
+   "2025": "v67 17-10-2026"
+  },
+  "units": {
+   "fuel": "t fuel",
+   "co2/between/departed/to/berth": "t CO2",
+   "sea_h": "h",
+   "fpd": "kg fuel per n mile"
+  },
+  "notes": [
+   "2020 is a partial year (delivery late 2020).",
+   "From 2024 the report format lists CO2, CH4 and N2O separately; only CO2 is kept here.",
+   "Berth emissions cover only ports under EU/EEA Member State jurisdiction; UK ports (Portsmouth) are outside EU MRV after 2020."
+  ],
+  "checksum": 644296.85242
+ },
+ "rows": {
+  "2020": {"fuel": 1697.2, "co2": 5440.1321, "between": 5105.2048, "departed": 0, "to": 0, "berth": 334.8934, "sea_h": 565.12, "fpd": 197.97, "er_id": 111834},
+  "2021": {"fuel": 18845.29, "co2": 59333.7, "between": 0, "departed": 28522.3901, "to": 28913.2352, "berth": 1898.1198, "sea_h": 6982.4, "fpd": 162.78, "er_id": 146971},
+  "2022": {"fuel": 16957.15, "co2": 54180.52, "between": 150.9566, "departed": 26022.7902, "to": 25953.2272, "berth": 2053.5332, "sea_h": 7017.1, "fpd": 144.12, "er_id": 214063},
+  "2023": {"fuel": 13974.53, "co2": 44094.8, "between": 880.073, "departed": 20920.863, "to": 20001.2211, "berth": 2292.6452, "sea_h": 5632.23, "fpd": 150.33, "er_id": 237951},
+  "2024": {"fuel": 18182.18, "co2": 56911.58332, "between": 43286.38, "departed": 2002.38, "to": 10205.73, "berth": 1417.08, "sea_h": 5407.5, "fpd": 180.93, "er_id": 278912},
+  "2025": {"fuel": 14128.18, "co2": 44205.22256, "between": 7168.85662, "departed": 17599.60144, "to": 16684.58016, "berth": 2752.18342, "sea_h": 5582.19, "fpd": 157.75, "er_id": 335236}
+ }
+}

@@ -1,0 +1,37 @@
+cff-version: 1.2.0
+message: "If you use this code or data, please cite the article and this repository."
+type: software
+title: "Multifunctional Flettner rotors: reduced-order models and data (ro-pax Galicia, Portsmouth–Bilbao)"
+version: 1.0.0
+license: MIT
+authors:
+  - family-names: Asensio
+    given-names: F.J.
+    affiliation: University of the Basque Country (UPV/EHU)
+  - family-names: Saldaña
+    given-names: G.
+    affiliation: University of the Basque Country (UPV/EHU)
+  - family-names: González-Pérez
+    given-names: M.
+    affiliation: University of the Basque Country (UPV/EHU)
+  - family-names: Oñederra
+    given-names: O.
+    affiliation: University of the Basque Country (UPV/EHU)
+  - family-names: Ordoño
+    given-names: A.
+    affiliation: University of the Basque Country (UPV/EHU)
+abstract: >-
+  Python reduced-order models and data comparing a conventional Flettner rotor with multifunctional rotors (a
+  vertical-axis wind turbine that assists their spin or generates electricity, a telescopic extension, or opening
+  into a Savonius turbine) on the ro-pax ferry Galicia on the Portsmouth–Bilbao route, at sea and at berth, with
+  hourly ERA5 winds for 2015–2024, a double-multiple streamtube model of the turbine validated against wind-tunnel
+  and field data, optimal versus rule-based switching between modes and a Monte Carlo analysis of coefficient
+  uncertainty.
+keywords:
+  - Flettner rotor
+  - wind-assisted ship propulsion
+  - vertical-axis wind turbine
+  - Savonius rotor
+  - operating strategy
+  - fuel savings
+  - ERA5
