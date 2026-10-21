@@ -3,8 +3,8 @@
 The data files in this repository (`datos/`, and the JSON files in `ruta/`, `ruta/datos_coef/`, `turbina/` and
 `turbina/datos/`) are released under the Creative Commons Attribution 4.0 International licence (CC BY 4.0,
 https://creativecommons.org/licenses/by/4.0/), except the NACA 0021 section data, which keep the BSD 3-Clause
-licence of their source (see Turbine data). When you reuse them, cite this repository and credit the original
-sources below.
+licence of their source (see Turbine data), and the coastlines in `ruta/datos_mapa/`, which are in the public domain
+(see Coastlines). When you reuse them, cite this repository and credit the original sources below.
 
 ## ERA5 wind
 
@@ -55,6 +55,14 @@ publications remain the reference and should be cited.
   Castelli M, Brighenti A, Benini E. Experimental benchmark data for H-shaped and troposkien VAWT architectures.
   Renew Energy 2018;125:425–444. https://doi.org/10.1016/j.renene.2018.02.098, transcribed from the accepted
   manuscript in the repository of the Politecnico di Milano. The original publication remains the reference.
+
+## Coastlines
+
+Files: `ruta/datos_mapa/ne_10m_tierra.geojson`, `ruta/datos_mapa/ne_10m_fronteras.geojson`.
+
+Made with Natural Earth. Free vector and raster map data @ naturalearthdata.com (public domain). Land, minor islands
+and land boundary lines at 1:10 m, from https://github.com/nvkelso/natural-earth-vector (folder `geojson/`, commit
+ca96624), clipped to 11°W–3°E and 41.5°N–52.5°N and simplified by `ruta/ruta_recorte_costa.py`.
 
 ## Model outputs
 

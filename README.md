@@ -20,6 +20,7 @@ sampled by Monte Carlo.
 | --- | --- |
 | `ruta/` | Route model, hourly simulation, Monte Carlo analysis and figure scripts, with their inputs and outputs (JSON) |
 | `ruta/datos_coef/` | Rotor coefficients digitised from published figures |
+| `ruta/datos_mapa/` | Coastlines and borders for the route map, from Natural Earth (public domain), clipped to the map |
 | `turbina/` | Turbine model (double-multiple streamtube), its validation against wind-tunnel and field data, and the coefficient maps that the route model reads |
 | `figuras/` | Scripts for the two schematic figures (Figs. 1 and 2) |
 | `datos/era5_horario_ruta.csv.gz` | Hourly ERA5 wind at the 10 route points and the two ports, 2015–2024 (8.5 MB) |
@@ -34,7 +35,8 @@ Python 3.11 or later and the packages in `requirements.txt`:
     pip install -r requirements.txt
 
 `tzdata` provides the time zones of the timetable on Windows. Only Fig. 2 needs a browser:
-`pip install playwright` and `python -m playwright install chromium`. The article's figures use the Inter typeface
+`pip install playwright` and `python -m playwright install chromium`. `ruta_recorte_costa.py`, which only rebuilds the
+clipped coastlines of the route map, needs `shapely`. The article's figures use the Inter typeface
 (https://rsms.me/inter/); the scripts use it if it is installed and Matplotlib's default font otherwise.
 
 The scripts were checked from a clean copy of this repository with Python 3.11 and 3.13: every output file is
@@ -55,6 +57,7 @@ maps are to be rebuilt; the route model reads `turbina/mapa_turbina.json` as inc
 | Script (in `ruta/`) | What it does | Output | In the article |
 | --- | --- | --- | --- |
 | `ruta_geometria.py` | Route legs and the 10 ERA5 sampling points | `ruta.json` | Section 3.6 |
+| `ruta_recorte_costa.py FOLDER` | Clips the Natural Earth coastlines and borders to the route map (optional; `FOLDER` holds `ne_10m_land.geojson`, `ne_10m_minor_islands.geojson` and `ne_10m_admin_0_boundary_lines_land.geojson` from https://github.com/nvkelso/natural-earth-vector, folder `geojson/`) | `datos_mapa/*.geojson` | Fig. 4 |
 | `ruta_analisis.py` | Central case, step-by-step changes from the first model version, sensitivity cases | `resultados_ruta.json` | Sections 4.2, 4.3 and 4.5; Tables 5 and 6 |
 | `ruta_montecarlo.py` | Monte Carlo analysis, 1,000 samples on two processes (several minutes) | `montecarlo_ruta.json` | Section 4.6; Tables 5 and 6 |
 | `ruta_calibracion_mrv.py` | Ship without rotors against its EU MRV reports | console | Section 3.6 |
@@ -71,9 +74,10 @@ The figure scripts write `fig_*.pdf` and `fig_*.png` next to themselves:
 | `figuras/fig_topologias.py` | Fig. 1 |
 | `figuras/fig_flujo.py` | Fig. 2 |
 | `ruta/ruta_figura_coeficientes.py` | Fig. 3 |
-| `ruta/ruta_figura_viento.py` | Fig. 4 |
-| `ruta/ruta_figura_horaria.py` (after `ruta_horaria.py`) | Fig. 5 |
-| `ruta/ruta_figura_puerto.py` | Fig. 6 |
+| `ruta/ruta_figura_mapa.py ../datos/era5_horario_ruta.csv.gz` | Fig. 4 |
+| `ruta/ruta_figura_viento.py` | Fig. 5 |
+| `ruta/ruta_figura_horaria.py` (after `ruta_horaria.py`) | Fig. 6 |
+| `ruta/ruta_figura_puerto.py` | Fig. 7 |
 | `turbina/validacion_dmst.py` | Fig. B.1 |
 
 Reference values for checking a run (central coefficients, year-round service):
