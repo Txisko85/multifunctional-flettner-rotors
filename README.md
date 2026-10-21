@@ -1,9 +1,9 @@
 # Multifunctional Flettner rotors: reduced-order models and data
 
 Code and data behind the article *Multifunctional Flettner rotors for wind-assisted ship propulsion: a comparative
-energy assessment of extension, turbine and Savonius-conversion topologies*, by F.J. Asensio, G. Saldaña,
-M. González-Pérez, O. Oñederra and A. Ordoño, submitted to *Applied Energy*. The full reference will be added when
-the article is published.
+energy assessment of extension, turbine and Savonius-conversion topologies*, by Francisco Javier Asensio, Gaizka
+Saldaña, Mikel González-Pérez, Oier Oñederra and Ander Ordoño, submitted to *Applied Energy*. The full reference
+will be added when the article is published.
 
 The models compare a conventional Flettner rotor with rotors that take extra functions: a vertical-axis wind turbine
 that assists their spin or generates electricity, a telescopic extension, or opening into a Savonius turbine. The

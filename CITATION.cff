@@ -6,19 +6,19 @@ version: 1.0.0
 license: MIT
 authors:
   - family-names: Asensio
-    given-names: F.J.
+    given-names: Francisco Javier
     affiliation: University of the Basque Country (UPV/EHU)
   - family-names: Saldaña
-    given-names: G.
+    given-names: Gaizka
     affiliation: University of the Basque Country (UPV/EHU)
   - family-names: González-Pérez
-    given-names: M.
+    given-names: Mikel
     affiliation: University of the Basque Country (UPV/EHU)
   - family-names: Oñederra
-    given-names: O.
+    given-names: Oier
     affiliation: University of the Basque Country (UPV/EHU)
   - family-names: Ordoño
-    given-names: A.
+    given-names: Ander
     affiliation: University of the Basque Country (UPV/EHU)
 abstract: >-
   Python reduced-order models and data comparing a conventional Flettner rotor with multifunctional rotors (a
