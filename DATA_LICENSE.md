@@ -58,11 +58,11 @@ publications remain the reference and should be cited.
 
 ## Coastlines
 
-Files: `ruta/datos_mapa/ne_10m_tierra.geojson`, `ruta/datos_mapa/ne_10m_fronteras.geojson`.
+File: `ruta/datos_mapa/ne_10m_tierra.geojson`.
 
-Made with Natural Earth. Free vector and raster map data @ naturalearthdata.com (public domain). Land, minor islands
-and land boundary lines at 1:10 m, from https://github.com/nvkelso/natural-earth-vector (folder `geojson/`, commit
-ca96624), clipped to 11°W–3°E and 41.5°N–52.5°N and simplified by `ruta/ruta_recorte_costa.py`.
+Made with Natural Earth. Free vector and raster map data @ naturalearthdata.com (public domain). Land and minor
+islands at 1:10 m, from https://github.com/nvkelso/natural-earth-vector (folder `geojson/`, commit ca96624), clipped
+to 11°W–3°E and 41.5°N–52.5°N and simplified by `ruta/ruta_recorte_costa.py`.
 
 ## Model outputs
 

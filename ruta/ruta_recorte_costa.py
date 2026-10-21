@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Recorta los datos de Natural Earth a la zona del mapa de la ruta (A1, 21-10-2026).
+Recorta la costa de Natural Earth a la zona del mapa de la ruta (A1, 21-10-2026).
 
 Natural Earth, escala 1:10 m, dominio público (https://www.naturalearthdata.com/), ficheros de la carpeta geojson/
-de https://github.com/nvkelso/natural-earth-vector (commit ca96624): ne_10m_land.geojson,
-ne_10m_minor_islands.geojson y ne_10m_admin_0_boundary_lines_land.geojson.
-Recorta a 11°W–3°E y 41,5°N–52,5°N, simplifica con una tolerancia de 0,002° (unos 200 m, invisible a la escala del
-mapa) y redondea las coordenadas a 1e-4°.
+de https://github.com/nvkelso/natural-earth-vector (commit ca96624): ne_10m_land.geojson y
+ne_10m_minor_islands.geojson.
+Recorta a 11°W–3°E y 41,5°N–52,5°N (más que la zona de estudio, que el mapa recorta después), simplifica con una
+tolerancia de 0,002° (unos 200 m, invisible a la escala del mapa) y redondea las coordenadas a 1e-4°.
+El mapa no dibuja fronteras: la política de mapas de Elsevier pide que muestren solo la zona de estudio.
 Uso: python ruta_recorte_costa.py CARPETA_CON_LOS_GEOJSON
-Salida: datos_mapa/ne_10m_tierra.geojson y datos_mapa/ne_10m_fronteras.geojson. Necesita shapely; la figura
-(ruta_figura_mapa.py) no lo necesita.
+Salida: datos_mapa/ne_10m_tierra.geojson. Necesita shapely; la figura (ruta_figura_mapa.py) no lo necesita.
 """
 import json
 import os
@@ -50,22 +50,10 @@ def main():
              for g in [mapping(land)]]
     note = ("Made with Natural Earth (public domain), 1:10 m land and minor islands, "
             "github.com/nvkelso/natural-earth-vector commit ca96624; clipped to 11W-3E, 41.5N-52.5N, simplified 0.002 deg")
-    json.dump(dict(type="FeatureCollection", name="ne_10m_tierra", note=note, features=feats),
-              open(os.path.join(out_dir, "ne_10m_tierra.geojson"), "w"), separators=(",", ":"))
-    lines = []
-    for f in load(os.path.join(src, "ne_10m_admin_0_boundary_lines_land.geojson")):
-        g = shape(f["geometry"])
-        if g.intersects(BBOX):
-            gi = g.intersection(BBOX).simplify(TOL)
-            if not gi.is_empty:
-                m = mapping(gi)
-                lines.append(dict(type="Feature", properties={}, geometry=dict(type=m["type"],
-                                                                               coordinates=rnd(m["coordinates"]))))
-    note_b = note.replace("land and minor islands", "admin-0 boundary lines (land)")
-    json.dump(dict(type="FeatureCollection", name="ne_10m_fronteras", note=note_b, features=lines),
-              open(os.path.join(out_dir, "ne_10m_fronteras.geojson"), "w"), separators=(",", ":"))
-    for n in ("ne_10m_tierra.geojson", "ne_10m_fronteras.geojson"):
-        print(n, os.path.getsize(os.path.join(out_dir, n)), "bytes")
+    out = os.path.join(out_dir, "ne_10m_tierra.geojson")
+    json.dump(dict(type="FeatureCollection", name="ne_10m_tierra", note=note, features=feats), open(out, "w"),
+              separators=(",", ":"))
+    print("ne_10m_tierra.geojson", os.path.getsize(out), "bytes")
 
 
 if __name__ == "__main__":
