@@ -1,0 +1,115 @@
+{
+ "legs": [
+  {
+   "from": "Portsmouth",
+   "to": "Nab",
+   "nm": 9.4,
+   "heading_south": 139.8
+  },
+  {
+   "from": "Nab",
+   "to": "St Catherine S",
+   "nm": 16.8,
+   "heading_south": 232.7
+  },
+  {
+   "from": "St Catherine S",
+   "to": "Start Point S",
+   "nm": 90.7,
+   "heading_south": 249.5
+  },
+  {
+   "from": "Start Point S",
+   "to": "Ushant SW",
+   "nm": 117.7,
+   "heading_south": 229.3
+  },
+  {
+   "from": "Ushant SW",
+   "to": "Bilbao approach",
+   "nm": 331.4,
+   "heading_south": 159.4
+  },
+  {
+   "from": "Bilbao approach",
+   "to": "Bilbao",
+   "nm": 5.8,
+   "heading_south": 158.0
+  }
+ ],
+ "total_nm": 571.8526857934527,
+ "points": [
+  {
+   "lat": 50.362,
+   "lon": -1.85,
+   "heading_south": 249.5,
+   "weight_nm": 45.36
+  },
+  {
+   "lat": 50.088,
+   "lon": -2.95,
+   "heading_south": 249.5,
+   "weight_nm": 45.36
+  },
+  {
+   "lat": 49.625,
+   "lon": -4.062,
+   "heading_south": 229.3,
+   "weight_nm": 58.84
+  },
+  {
+   "lat": 48.975,
+   "lon": -5.188,
+   "heading_south": 229.3,
+   "weight_nm": 58.84
+  },
+  {
+   "lat": 48.217,
+   "lon": -5.527,
+   "heading_south": 159.4,
+   "weight_nm": 55.23
+  },
+  {
+   "lat": 47.35,
+   "lon": -5.082,
+   "heading_south": 159.4,
+   "weight_nm": 55.23
+  },
+  {
+   "lat": 46.483,
+   "lon": -4.638,
+   "heading_south": 159.4,
+   "weight_nm": 55.23
+  },
+  {
+   "lat": 45.617,
+   "lon": -4.192,
+   "heading_south": 159.4,
+   "weight_nm": 55.23
+  },
+  {
+   "lat": 44.75,
+   "lon": -3.748,
+   "heading_south": 159.4,
+   "weight_nm": 55.23
+  },
+  {
+   "lat": 43.883,
+   "lon": -3.303,
+   "heading_south": 159.4,
+   "weight_nm": 55.23
+  }
+ ],
+ "ports": [
+  {
+   "name": "Portsmouth",
+   "lat": 50.79,
+   "lon": -1.11
+  },
+  {
+   "name": "Bilbao",
+   "lat": 43.36,
+   "lon": -3.03
+  }
+ ]
+}
