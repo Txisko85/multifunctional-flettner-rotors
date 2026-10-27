@@ -131,5 +131,4 @@ Country (UPV/EHU) [grant number IT1799-26].
 
 ## Use of AI
 
-The code was written with the assistance of Claude (Anthropic). The authors reviewed it and take full responsibility
-for it.
+Some data used for model validation were extracted from figures published in the literature with the assistance of Claude (Anthropic). The extracted data were reviewed and verified by the authors, who take full responsibility for their accuracy.
