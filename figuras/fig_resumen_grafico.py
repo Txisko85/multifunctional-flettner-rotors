@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Resumen gráfico (graphical abstract) de A1 para Applied Energy (21-10-2026; versión 4, 26-10-2026).
+Resumen gráfico (graphical abstract) de A1 para Applied Energy (21-10-2026; versión 4, 26-10-2026; versión 5, 27-10-2026: abril-octubre, escenario A-VG).
 
 13 cm x 5,2 cm: la proporción 2,5:1 de Elsevier (mínimo 1328 x 531 píxeles), legible a 13 cm de ancho.
 Izquierda: el caso de estudio (mapa de la zona de estudio y buque con cuatro rotores) y el ahorro de los rotores
@@ -80,7 +80,8 @@ def load_results():
     r1 = res["base"]["sea"]["R1"]
     return dict(rows=rows, mc=mc, r1=r1, r1_pct=100 * r1 / res["base"]["fuel_total"],
                 r1_p5=mc["R1 %"]["p5"], r1_p95=mc["R1 %"]["p95"], eps=res["eps_star"],
-                r130=res["base"]["sea"]["R1-30"], r1t=res["base"]["sea"]["R1t"])
+                r130=res["base"]["sea"]["R1-30"], r1t=res["base"]["sea"]["R1t"],
+                r1_vg_pct=res["escenarios"]["coeficientes A-VG"]["R1_pct"])
 
 
 # ---------------------------------------------------------------- zona izquierda: caso de estudio
@@ -203,12 +204,12 @@ def main():
     yt = H - 0.05 - 0.25 - 0.08
     text_in(fig, tx, yt, "Ro-pax ferry with\nfour Flettner rotors", ha="left", va="top", fontsize=7.6,
             fontweight="bold", color=INK, linespacing=1.12)
-    text_in(fig, tx, yt - 0.30, "Portsmouth\u2013Bilbao,\nApril\u2013November,\nhourly ERA5 winds", ha="left", va="top",
+    text_in(fig, tx, yt - 0.30, "Portsmouth\u2013Bilbao,\nApril\u2013October,\nhourly ERA5 winds", ha="left", va="top",
             fontsize=7.2, color=MUTED, linespacing=1.12)
-    text_in(fig, tx, 0.57, f"{d['r1_pct']:.1f}%", ha="left", va="bottom", fontsize=15, fontweight="bold",
+    text_in(fig, tx, 0.72, f"{d['r1_pct']:.1f}%", ha="left", va="bottom", fontsize=15, fontweight="bold",
             color=INK)
-    text_in(fig, tx, 0.53, "less fuel with\nconventional rotors\n"
-            f"({d['r1_p5']:.1f}\u2013{d['r1_p95']:.1f}%)", ha="left", va="top", fontsize=7.2, color=MUTED,
+    text_in(fig, tx, 0.68, "less fuel with\nconventional rotors\n"
+            f"({d['r1_p5']:.1f}\u2013{d['r1_p95']:.1f}%;\n{d['r1_vg_pct']:.1f}% if fitted\nto full scale)", ha="left", va="top", fontsize=7.2, color=MUTED,
             linespacing=1.12)
     fig.add_artist(plt.Line2D([1.90 / W, 1.90 / W], [0.10 / H, (H - 0.10) / H], color=RULE, lw=0.5))
 
@@ -217,7 +218,7 @@ def main():
     pw = W - px - 0.06
     py, ph = 0.88, 0.93
     ax = axes_in(fig, px, py, pw, ph)
-    cols = [("T3x", "Telescopic\nextension", "C2"), ("T5", "Savonius\nat berth", "C3"),
+    cols = [("T3x", "Telescopic\nextension", "C2"), ("T5", "Savonius\nconversion", "C3"),
             ("T4", "Retractable\nturbine", "C1"), ("T1", "Fixed\nturbine", "C1")]
     xl, xr = 0.45, 4.55
     ylo, yhi = -32.0, 124.0
@@ -242,9 +243,6 @@ def main():
                 va="bottom" if v > 0 else "center", fontsize=8.0, fontweight="bold", color=INK, zorder=6)
         if key == "T3x":                                # clave de las líneas, una sola vez, y comparadores
             ax.text(i, hi + 0.03 / sy, "5\u201395%", ha="center", va="bottom", fontsize=6.6, color=MUTED)
-            ax.text(i + width / 2 + 0.035 / sx, v - 0.13 / sy, f"Rotor 6 m taller {fmt(d['r130'])}\n"
-                    f"Tiltable rotor {fmt(d['r1t'])}", ha="left", va="top", fontsize=6.3, color=MUTED,
-                    linespacing=1.12, zorder=6)
     centers = [px + (i - xl) * sx for i in range(1, 5)]
 
     # mensaje: interacción necesaria para que una turbina iguale a la prolongación
@@ -258,6 +256,8 @@ def main():
     by0 = bb.y0 - pad / sy
     ax.add_patch(FancyBboxPatch((bx0, by0), bx1 - bx0, by1 - by0, boxstyle="round,pad=0,rounding_size=0.06",
                                 fc=PANEL, ec="none", zorder=1.5, mutation_aspect=sx / sy))
+    ax.text(1.32, -0.06 / sy, f"Rotor 6 m taller {fmt(d['r130'])} \u00b7 tiltable rotor {fmt(d['r1t'])}", ha="left", va="top", fontsize=6.3, color=MUTED, linespacing=1.12,
+            zorder=6)
 
     text_in(fig, 2.02, H - 0.05, "Fuel saved vs conventional rotors (t/yr, four units)", ha="left", va="top",
             fontsize=7.6, fontweight="bold", color=INK)

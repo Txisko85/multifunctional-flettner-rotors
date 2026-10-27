@@ -77,6 +77,27 @@ def equilibrium(force, x_a, v_kn, prm):
     return dict(beta=beta, delta=delta, f_n=f_n, y_hull=y_h, y_rudder=(1.0 + prm["a_h"]) * f_n, dR=d_r)
 
 
+def quad_coeffs(v_kn, prm):
+    """Forma cuadrática de la resistencia añadida (versión 5): dR = a Y^2 + b Y N + c N^2 (N; Y en N, fuerza lateral
+    total hacia sotavento; N en N m, su momento de guiñada respecto a la maestra, positivo con la fuerza a proa), con
+    ángulos pequeños (sin delta = delta). Es la misma física que equilibrium(), lineal en (Y, N); los coeficientes
+    escalan con 1/U^2."""
+    u = v_kn * KN
+    q = 0.5 * RHO_W * L * D * u * u
+    y_b, n_b = hull_derivatives(prm["cb"], prm["cpa"], prm["cwa"])
+    a_r = prm["ar_ld"] * L * D
+    f_alpha = 6.13 * prm["lam"] / (prm["lam"] + 2.25)
+    k_r = 0.5 * RHO_W * a_r * (prm["ur"] * u) ** 2 * f_alpha
+    l_r = (abs(prm["x_r"]) + prm["a_h"] * abs(prm["x_h"])) * L
+    den = q * (y_b + (1.0 + prm["a_h"]) * L * n_b / l_r)
+    b_y, b_n = 1.0 / den, (1.0 + prm["a_h"]) / (l_r * den)
+    f_y, f_n = q * L * n_b * b_y / l_r, (q * L * n_b * b_n - 1.0) / l_r
+    d_y, d_n = f_y / k_r + prm["gamma_r"] * b_y, f_n / k_r + prm["gamma_r"] * b_n
+    tr, ch = 1.0 - prm["t_r"], prm["c_h"] * q * y_b
+    return (tr * f_y * d_y + 0.5 * ch * b_y ** 2, tr * (f_y * d_n + f_n * d_y) + ch * b_y * b_n,
+            tr * f_n * d_n + 0.5 * ch * b_n ** 2)
+
+
 def e_equivalent(x_a, v_kn, prm, force=1e5):
     u = v_kn * KN
     q_w = 0.5 * RHO_W * u * u
@@ -108,14 +129,26 @@ def main():
         print(f"  {lab:40s} e_eq central {e_c:5.2f}  (P5-P95 {np.percentile(es, 5):.2f}-{np.percentile(es, 95):.2f}); "
               f"timón {100 * frac:5.1f} % de la fuerza; con 100 kN: deriva {math.degrees(eq['beta']):.3f} grados, "
               f"timón {math.degrees(eq['delta']):.2f} grados")
-    # caso fuerte: cuatro rotores a U_a = 20 m/s más el viento sobre el buque de través, a 18 kn
-    f_rot, f_ship = 4 * 111e3, 0.5 * 1.225 * 20.0 ** 2 * 4500.0
-    eq = equilibrium(f_rot + f_ship, (f_ship * 0.05 * L) / (f_rot + f_ship), v, CENTRAL)
-    out["caso_fuerte"] = dict(F_kN=(f_rot + f_ship) / 1e3, beta_grados=math.degrees(eq["beta"]),
-                              delta_grados=math.degrees(eq["delta"]), dR_kN=eq["dR"] / 1e3)
-    print(f"\nCaso fuerte (U_a = 20 m/s de través, cuatro rotores {f_rot / 1e3:.0f} kN y buque {f_ship / 1e3:.0f} kN, "
-          f"18 kn): deriva {math.degrees(eq['beta']):.2f} grados, timón {math.degrees(eq['delta']):.2f} grados, "
-          f"resistencia añadida {eq['dR'] / 1e3:.1f} kN")
+    # caso fuerte (versión 5, revisión simulada v2, menor R1-5): U_a = 20 m/s a 18 kn, viento sobre el buque de
+    # través centrado en 0,05 L. (a) Cota: la resultante de las cuatro unidades (|C| q A_F) como si fuera toda
+    # lateral, lo que ninguna dirección del viento produce a la vez; (b) viento aparente de través: la fuerza lateral
+    # de los rotores es su resistencia, C_D q A_F (la sustentación empuja hacia proa).
+    import ruta_modelo as rm
+    p = rm.P()
+    u_a = 20.0
+    k = min(p.k_max, p.us_max / u_a)
+    cl, cd = (float(x[0]) for x in rm.rotor_coeffs(np.array([k]), p))
+    q = 0.5 * rm.RHO * u_a ** 2
+    f_ship = q * p.ayc
+    out["caso_fuerte"] = {}
+    for lab, f_rot in (("cota_resultante", 4 * q * rm.A_F * math.hypot(cl, cd)), ("traves", 4 * q * rm.A_F * cd)):
+        eq = equilibrium(f_rot + f_ship, (f_ship * 0.05 * L) / (f_rot + f_ship), v, CENTRAL)
+        out["caso_fuerte"][lab] = dict(F_rotores_kN=f_rot / 1e3, F_buque_kN=f_ship / 1e3, F_kN=(f_rot + f_ship) / 1e3,
+                                       beta_grados=math.degrees(eq["beta"]), delta_grados=math.degrees(eq["delta"]),
+                                       dR_kN=eq["dR"] / 1e3, k=k, CL=cl, CD=cd)
+        print(f"\nCaso fuerte, {lab} (U_a = 20 m/s, 18 kn): rotores {f_rot / 1e3:.0f} kN y buque {f_ship / 1e3:.0f} kN: "
+              f"deriva {math.degrees(eq['beta']):.2f} grados, timón {math.degrees(eq['delta']):.2f} grados, "
+              f"resistencia añadida {eq['dR'] / 1e3:.1f} kN")
     json.dump(out, open("maniobra.json", "w", encoding="utf-8"), indent=1, ensure_ascii=False)
     return out
 

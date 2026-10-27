@@ -79,12 +79,22 @@ def heeling(p, u_a=UA_DESIGN):
     m = moments(u_a, p)
     arm_rot = rm.Z_ROT + p.t_draught / 2.0
     arm_top = Z_DECK + rm.H_F + rm.H_X / 2.0 + p.t_draught / 2.0
+    # versión 5: (a) cota con la resultante de cada unidad; (b) viento aparente de través, con la fuerza lateral
+    # de los rotores igual a su resistencia (C_D q A)
+    q = 0.5 * rm.RHO * u_a ** 2
+    k = k_op(u_a, p)
+    _, cd = coeffs(k, p)
+    _, cdx = coeffs(k * rm.D_X / rm.D_F, p)
+    lat = dict(rot=q * rm.A_F * cd, ext=q * rm.A_X * cdx, r30=q * rm.A_UP * cd)
     out = {}
-    for lab, mom in (("R1", m["f_rot"] * arm_rot), ("T3x", m["f_rot"] * arm_rot + m["f_ext"] * arm_top),
-                     ("R1-30", m["f_rot"] * arm_rot + m["f_30"] * arm_top)):
-        mh = p.n_units * mom
+    for lab, mom, mom_t in (("R1", m["f_rot"] * arm_rot, lat["rot"] * arm_rot),
+                            ("T3x", m["f_rot"] * arm_rot + m["f_ext"] * arm_top, lat["rot"] * arm_rot + lat["ext"] * arm_top),
+                            ("R1-30", m["f_rot"] * arm_rot + m["f_30"] * arm_top, lat["rot"] * arm_rot + lat["r30"] * arm_top)):
+        mh, mt = p.n_units * mom, p.n_units * mom_t
         heel = [math.degrees(math.asin(min(1.0, mh / (dsp * 1e3 * 9.81 * gm)))) for dsp in DISPL_T for gm in GM_M]
-        out[lab] = dict(M_MNm=mh / 1e6, escora_grados=(min(heel), max(heel)))
+        heel_t = [math.degrees(math.asin(min(1.0, mt / (dsp * 1e3 * 9.81 * gm)))) for dsp in DISPL_T for gm in GM_M]
+        out[lab] = dict(M_MNm=mh / 1e6, escora_grados=(min(heel), max(heel)), M_traves_MNm=mt / 1e6,
+                        escora_traves_grados=(min(heel_t), max(heel_t)))
     return out
 
 
@@ -111,8 +121,9 @@ def air_draft():
 if __name__ == "__main__":
     import coeficientes as cf
     cases = [("A (referencia)", rm.P()), ("A+ (k <= 4, U_s <= 46 m/s)", rm.P(**cf.ESCENARIOS_COEF["A+"])),
+             ("A-VG (ajustado al Viking Grace)", rm.P(**cf.ESCENARIOS_COEF["A-VG"])),
              ("AB (versión 3)", rm.P(**cf.ESCENARIOS_COEF["AB"])), ("B", rm.P(**cf.ESCENARIOS_COEF["B"])),
-             ("f_X = 1,25", rm.P(cl_ext=1.25)), ("f_X = 0,95", rm.P(cl_ext=0.95)), ("f_X = 0,5 (placa abajo)", rm.P(cl_ext=0.5)),
+             ("f_X = 1,30", rm.P(cl_ext=1.30)), ("f_X = 0,90", rm.P(cl_ext=0.90)), ("f_X = 0,5 (placa abajo)", rm.P(cl_ext=0.5)),
              ("Ct Savonius 1,0", rm.P(ct_s=1.0)), ("Ct Savonius en la cota", rm.P(ct_s=cf.KAPPA_S * cf.CENTRAL["cp_s"]))]
     res = [report(p, lab) for lab, p in cases]
     for r in res:
@@ -122,8 +133,10 @@ if __name__ == "__main__":
               f"+{r['vawt_pct_20']:4.1f} %; Savonius {r['sav_pct_of_design']:5.1f} % del de diseño; prolongación hasta "
               f"Ua {r['ua_ext_max']:.2f} m/s")
         e = r["escorante"]
-        print("    momento escorante a 20 m/s de través: " + "; ".join(
-            f"{k} {v['M_MNm']:.1f} MN m ({v['escora_grados'][0]:.1f}-{v['escora_grados'][1]:.1f} grados)" for k, v in e.items()))
+        print("    momento escorante a 20 m/s (cota con la resultante | de través): " + "; ".join(
+            f"{k} {v['M_MNm']:.1f} MN m ({v['escora_grados'][0]:.1f}-{v['escora_grados'][1]:.1f} grados) | "
+            f"{v['M_traves_MNm']:.1f} MN m ({v['escora_traves_grados'][0]:.1f}-{v['escora_traves_grados'][1]:.1f})"
+            for k, v in e.items()))
     print("calado aéreo (m sobre la flotación):", air_draft())
     json.dump(dict(casos=res, calado_aereo=air_draft(), z_deck=Z_DECK, desplazamiento_t=DISPL_T, gm_m=GM_M),
               open("momentos.json", "w"), indent=1, ensure_ascii=False)

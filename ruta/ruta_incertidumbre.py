@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Incertidumbre de la versión 4 (22-10-2026; revisión simulada R2-1 y R3-4).
+Incertidumbre de la versión 5 (27-10-2026; segunda revisión simulada: R2-1, R3-m1). Versión 4: 22-10-2026.
+
+Cambios de la versión 5: N = 1024 (antes 256); C_t,S se muestrea desde la cota estricta C_p,S/lambda; la resistencia
+inducida sale del equilibrio de deriva y guiñada, así que e_H deja de muestrearse y se muestrean c_H, C_pa, C_wa y el
+centro de la fuerza lateral del viento sobre el buque x_s (18 entradas); escenario A-VG (ajustado al Viking Grace)
+añadido a los demás; comparador R1-D5.
 
 1. Incertidumbre epistémica de los coeficientes del rotor: escenarios (coeficientes.ESCENARIOS_COEF), no una
    variable muestreada. El escenario de referencia es A (validacion_viking_grace.py).
@@ -27,15 +32,15 @@ import coeficientes as cf
 import ruta_modelo as rm
 
 _ARGS = [a for a in sys.argv[1:] if not a.startswith("--")]
-N = int(_ARGS[0]) if len(_ARGS) > 0 else 256
+N = int(_ARGS[0]) if len(_ARGS) > 0 else 1024
 N_ESC = int(_ARGS[1]) if len(_ARGS) > 1 else 256
 SEED = 20261022
 N_BOOT = 1000
-ESC_OTROS = ("A+", "AB", "B", "B'")
-RANGES = {k: v for k, v in cf.RANGES_V4_MC.items() if k != "ct_s"}
+ESC_OTROS = ("A+", "AB", "B", "B'", "A-VG")
+RANGES = {k: v for k, v in cf.RANGES_V5_MC.items() if k != "ct_s"}
 RANGES["u_ct"] = (0.0, 1.0)
 KEYS = list(RANGES)
-OUTS = ("R1", "T3x", "T3", "T5", "T4", "T2", "T1", "R1t", "R1-30", "fuel_total", "pen R1")
+OUTS = ("R1", "T3x", "T3", "T5", "T4", "T2", "T1", "R1t", "R1-30", "R1-D5", "fuel_total", "pen R1")
 _D = None
 
 
@@ -59,7 +64,7 @@ def run(args):
     r = rm.annual(d, groups, nu, ng, p)
     tot = {row[0]: row[3] for row in rm.table(r)}
     out = {"R1": r["sea"]["R1"], "fuel_total": r["fuel_total"], "pen R1": r["sea"]["_pen R1"],
-           "R1t": r["sea"]["R1t"], "R1-30": r["sea"]["R1-30"]}
+           "R1t": r["sea"]["R1t"], "R1-30": r["sea"]["R1-30"], "R1-D5": r["sea"]["R1-D5"]}
     for key in ("T1", "T2", "T3", "T3x", "T4", "T5"):
         out[key] = tot[key]
     return [out[k] for k in OUTS]
@@ -87,7 +92,7 @@ def sobol(fa, fb, fab):
 
 ORDER = [("T3", "T3x", True), ("T3x", "T5", False), ("T5", "T4", False), ("T4", "T2", False), ("T2", "T1", False),
          ("T3x", "T4", False), ("T3x", "R1t", False), ("T3", "R1t", False), ("T3", "R1-30", False),
-         ("T3x", "R1-30", False), ("R1-30", "R1t", False)]
+         ("T3x", "R1-30", False), ("R1-30", "R1t", False), ("T3x", "R1-D5", False)]
 
 
 def probabilities(arr):
@@ -122,6 +127,24 @@ def summarize(arr, rng):
     return out, probs
 
 
+CKPT = "incertidumbre_parcial.npy"
+BLOCK = 256
+
+
+def _run_checkpointed(jobs):
+    """Evalúa los trabajos por bloques y guarda los resultados parciales en CKPT, para poder reanudar el cálculo
+    si se interrumpe (27-10-2026). El orden de los trabajos lo fija la semilla, así que reanudar da lo mismo."""
+    import os
+    done = np.load(CKPT) if os.path.exists(CKPT) else np.empty((0, len(OUTS)))
+    with Pool(2, initializer=_init) as pool:
+        while len(done) < len(jobs):
+            blk = jobs[len(done):len(done) + BLOCK]
+            done = np.concatenate([done, np.array(pool.map(run, blk, chunksize=8))])
+            np.save(CKPT, done)
+            print(f"{len(done)}/{len(jobs)}", flush=True)
+    return done
+
+
 def main():
     d = len(KEYS)
     if "--muestras" in sys.argv:
@@ -148,8 +171,7 @@ def main():
         esc_x = {e: scale(rng.random((n_esc, d))) for e in ESC_OTROS}
         for e, xe in esc_x.items():
             jobs += [(x, e) for x in xe]
-        with Pool(2, initializer=_init) as pool:
-            res = np.array(pool.map(run, jobs, chunksize=8))
+        res = _run_checkpointed(jobs)
         ya = res[:len(xs)]
         np.savez_compressed("incertidumbre_muestras.npz", x=xs, y=ya, x_esc=np.stack([esc_x[e] for e in ESC_OTROS]),
                             y_esc=res[len(xs):], escenarios=np.array(ESC_OTROS), claves=np.array(KEYS),
@@ -191,7 +213,8 @@ def analyse(xs, ya, res, N, N_ESC, d):
     for e, v in out["escenarios"].items():
         r = v["resumen"]
         print(f"Escenario {e} (n = {v['n']}): " + "; ".join(
-            f"{k} {r[k]['p50']:.1f} ({r[k]['p5']:.1f}-{r[k]['p95']:.1f})" for k in ("R1", "T3x", "T3", "T5", "R1t", "R1-30")))
+            f"{k} {r[k]['p50']:.1f} ({r[k]['p5']:.1f}-{r[k]['p95']:.1f})" for k in ("R1", "T3x", "T3", "T5", "R1t", "R1-30",
+                                                                                 "R1-D5")))
         print("   " + "; ".join(f"P({k}) = {pp['p']:.2f}" for k, pp in v["probabilidades"].items()))
     for name, sv in out["sobol"].items():
         top = sorted(sv.items(), key=lambda kv: -kv[1]["ST"])[:5]

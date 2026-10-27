@@ -166,7 +166,7 @@ def evaluate(hist, v_kn, p):
 
 
 def p_vg(**kw):
-    base = dict(n_units=1, r1_only=True, t_draught=T_VG, kappa=1.0, windage=False, r0_wind=False)
+    base = dict(n_units=1, r1_only=True, t_draught=T_VG, kappa=1.0, windage=False, r0_wind=False, sir_model="ala")
     base.update(kw)
     return rm.P(**base)
 
@@ -178,6 +178,7 @@ ESCENARIOS = [  # escenarios epistémicos de coeficientes (coeficientes.ESCENARI
     ("B: Bordogna et al. (2019), AR_eff 12", "B"),
     ("B': B con la línea sustentadora (eta 0,83)", "B'"),
     ("B'': B sin reflexión en la cubierta (eta 0,725, AR_eff 6)", "B''"),
+    ("A-VG: A con C_L ajustado al Viking Grace (celdas de mar, 244,5 kW)", "A-VG"),
 ]
 
 
@@ -219,21 +220,41 @@ def main():
         out["sensibilidad"][label] = r
         print(f"{label:58s} {r['empuje']:7.1f} {r['empuje_ef']:6.1f} {r['giro']:6.1f} {r['parado']:6.1f} "
               f"{r['inducida']:6.1f} {r['neto']:6.1f} {100 * r['marcha']:5.0f}% {r['k_medio']:5.2f}")
+    # escenario ajustado a la medida (versión 5; revisión simulada v2, R1-1 y R2-2): multiplicador de C_L del escenario
+    # A con el que el empuje del modelo, con las celdas de mar, iguala 207, 244,5 (centro) y 282 kW
+    out["ajuste_cl"] = {}
+    for target in (REF_KW[0], 0.5 * (REF_KW[0] + REF_KW[1]), REF_KW[1]):
+        lo, hi = 0.8, 3.0
+        for _ in range(40):
+            mid = 0.5 * (lo + hi)
+            if evaluate(h_sea, V_SERVICE, p_vg(cl_mult=mid))["empuje"] < target:
+                lo = mid
+            else:
+                hi = mid
+        m = 0.5 * (lo + hi)
+        r = evaluate(h_sea, V_SERVICE, p_vg(cl_mult=m))
+        r_all = evaluate(h_all, V_SERVICE, p_vg(cl_mult=m))
+        out["ajuste_cl"][f"{target:g}"] = dict(cl_mult=m, celdas_mar=r, todas_las_celdas=r_all)
+        print(f"Ajuste a {target:.1f} kW (celdas de mar): C_L x {m:.3f}; con todas las celdas, empuje "
+              f"{r_all['empuje']:.1f} kW, neto {r_all['neto']:.1f} kW")
+        chk = cf.CL_MULT_VG.get(f"{target:g}")
+        if chk is None or abs(chk - round(m, 3)) > 5e-4:
+            print(f"  AVISO: coeficientes.CL_MULT_VG['{target:g}'] = {chk}; el ajustado es {m:.3f}")
     # el mismo cálculo para el Galicia (por rotor, abril-noviembre, travesías del horario), para comparar
-    d, groups, nu, ng = rm.load_wind(os.path.join(HERE, "era5_ruta.json"))
+    d, groups, nu, ng = rm.load_wind()
     gal = {}
     for label, esc in ESCENARIOS:
         p = rm.P(**cf.ESCENARIOS_COEF[esc])
         acc, hrs = {}, 0.0
         for name, direction, h in rm.crossings(p):
             v_kn, t_open = rm.crossing_speed(h, p)
-            mb = rm.mean_benefits(groups, nu, ng, 0, direction, v_kn, p)
+            mb = rm.mean_benefits(groups, nu, ng, 0, direction, v_kn, p, name=name)
             for k2 in ("R1", "_R1 empuje", "_R1 giro", "_R1 parado", "_pen R1", "_R1 marcha"):
                 acc[k2] = acc.get(k2, 0.0) + mb[k2] * t_open
             hrs += t_open
         gal[label] = {k2: v2 / hrs for k2, v2 in acc.items()}
-    out["galicia_abr_nov"] = gal
-    print("\nGalicia, abril-noviembre, mar abierto (kW por rotor, mismo código)")
+    out["galicia_abr_oct"] = gal
+    print("\nGalicia, abril-octubre, mar abierto (kW por rotor, mismo código)")
     for label, r in gal.items():
         print(f"{label:58s} empuje {r['_R1 empuje']:6.1f}  giro {r['_R1 giro']:5.1f}  parado {r['_R1 parado']:5.1f}  "
               f"inducida {r['_pen R1']:5.1f}  neto {r['R1']:6.1f}  marcha {100 * r['_R1 marcha']:3.0f}%")

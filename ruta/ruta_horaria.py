@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-A1 - Modelo horario de travesías. Versión 4 (22-10-2026; la versión 3 está en el historial del repositorio).
+A1 - Modelo horario de travesías. Versión 5 (27-10-2026): temporada de abril a octubre (ruta_modelo.SEASON_MONTHS,
+por el mes de salida), resistencia inducida del equilibrio de deriva y guiñada y comparadores nuevos (R1-D5).
+Versión 4 (22-10-2026; la versión 3 está en el historial del repositorio).
 Simula cada travesía del horario de 2026 sobre el viento ERA5 horario de 2015-2024 (era5_horario_ruta.csv.gz):
 posición, rumbo y velocidad del buque en cada hora, viento verdadero y aparente, y beneficio de cada modo de cada
 topología con ruta_modelo.bin_terms (la misma física que el modelo de histogramas).
 
 Cambios de la versión 4 (revisión simulada R3-5 y R3-m4):
-- Caso base: servicio documentado de abril a noviembre (ruta_modelo.BASE_SEASONS); diciembre-marzo como escenario.
+- Caso base: servicio documentado (ruta_modelo.BASE_SEASONS; abril-noviembre en la versión 4, abril-octubre desde la
+  versión 5); el resto del año como escenario.
 - R0 con el modelo de la versión 4 (resistencia del viento sobre el buque, curva SFOC, margen de mar) y ahorros
   convertidos con el consumo marginal de cada travesía, como en ruta_modelo.annual.
 - Coste de arranque y parada también para el rotor convencional: R1 tiene dos modos (parado, en marcha) y cada cambio
@@ -97,8 +100,8 @@ def schedule(table, shift=0.0):
                 t1 = _hours(d, hh, mm, tz) + shift
                 t2 = _hours(d + dt.timedelta(days=nd), ah, am, atz) + shift
                 if t1 >= 0 and t2 <= N_HORAS - 1:
-                    out.append(dict(name=name, tag=tag, t1=t1, t2=t2, year=d.year,
-                                    season=0 if 4 <= d.month <= 11 else 1))
+                    out.append(dict(name=name, tag=tag, t1=t1, t2=t2, year=d.year, month=d.month,
+                                    season=rm.season_of_month(d.month)))
         d += dt.timedelta(days=1)
     return out
 
@@ -179,7 +182,8 @@ def evaluate(fields, cross, p, binned=None, forecast=None):
             g = float(eh.fold(d100 - psi))
             if binned is not None:
                 iu = min(eh.NU - 1, int(math.floor(u)))
-                u, r = iu + 0.5, float(binned[RUTA[ip][1]]["ratio"][c["season"]][iu])
+                s_leg = 0 if 4 <= c["month"] <= 11 else 1          # estaciones de era5_ruta.json (versión 4)
+                u, r = iu + 0.5, float(binned[RUTA[ip][1]]["ratio"][s_leg][iu])
                 g = (min(eh.NG - 1, int(math.floor(g / 15.0))) + 0.5) * 15.0
             if c["tag"] == "N":
                 g = 180.0 - g
@@ -456,13 +460,15 @@ def run(path="era5_horario_ruta.csv.gz", p=None, taus=TAUS, quiet=False, forecas
     res = {"travesias": len(recs), "travesias_caso_base": len(base),
            "horas_mar": float(sum(r["a"][:, 0].sum() for r in base)),
            "horas_sin_dato": int(sum(len(crossing_hours(r["c"])[2]) - len(r["a"]) for r in recs)),
-           "R0_t_anio": r0_fuel(recs, p), "R0_t_anio_completo": r0_fuel(recs, p, seasons=(0, 1)),
+           "R0_t_anio": r0_fuel(recs, p), "R0_t_anio_completo": r0_fuel(recs, p, seasons=rm.ALL_SEASONS),
+           "R0_t_abr_nov": r0_fuel(recs, p, seasons=rm.NOV_SEASONS),
            "tau_h": list(taus), "L_h": list(LS), "H_h": list(HS), "tau_R1": list(TAU_R1), "tau_abatible": list(TAU_TILT),
            "prevision": FORECAST}
     per = {topo: strategies(recs, topo, taus, recs_fc=recs_fc) for topo in ("R1", "T1", "T2", "T3", "T3x", "T4", "T5")}
     r1 = per["R1"]["inst"]
-    res["R1"] = {"inst": annualise(recs, r1), "abr-nov": annualise(recs, r1, by=0), "dic-mar": annualise(recs, r1, by=1),
-                 "año completo": annualise(recs, r1, seasons=(0, 1)), "por_anio": annualise(recs, r1, by="year")}
+    res["R1"] = {"inst": annualise(recs, r1), "abr-oct": annualise(recs, r1, by=0), "nov": annualise(recs, r1, by=2),
+                 "dic-mar": annualise(recs, r1, by=1), "abr-nov": annualise(recs, r1, seasons=rm.NOV_SEASONS),
+                 "año completo": annualise(recs, r1, seasons=rm.ALL_SEASONS), "por_anio": annualise(recs, r1, by="year")}
     res["R1"]["por_anio_estad"] = stats(res["R1"]["por_anio"])
     pen = [float((r["a"][:, 0] * r["a"][:, 10]).sum()) for r in recs]
     res["R1"]["inducida"] = annualise(recs, pen)
@@ -481,7 +487,8 @@ def run(path="era5_horario_ruta.csv.gz", p=None, taus=TAUS, quiet=False, forecas
                 d[k] = float(np.mean(v))
             else:
                 d[k] = annualise(recs, v) - res["R1"]["inst"]
-        d["abr-nov inst"] = annualise(recs, per[topo]["inst"], by=0) - res["R1"]["abr-nov"]
+        d["abr-oct inst"] = annualise(recs, per[topo]["inst"], by=0) - res["R1"]["abr-oct"]
+        d["abr-nov inst"] = annualise(recs, per[topo]["inst"], seasons=rm.NOV_SEASONS) - res["R1"]["abr-nov"]
         d["dic-mar inst"] = annualise(recs, per[topo]["inst"], by=1) - res["R1"]["dic-mar"]
         for k in ["inst"] + [f"optima {t}" for t in taus]:
             yr = {y: v - res["R1"]["por_anio"][y] for y, v in annualise(recs, per[topo][k], by="year").items()}
@@ -496,12 +503,13 @@ def run(path="era5_horario_ruta.csv.gz", p=None, taus=TAUS, quiet=False, forecas
 
 
 def report(res):
-    print(f"Travesías simuladas: {res['travesias']} ({res['travesias_caso_base']} de abril a noviembre); horas en el "
+    print(f"Travesías simuladas: {res['travesias']} ({res['travesias_caso_base']} de abril a octubre); horas en el "
           f"mar {res['horas_mar']:.0f}; horas sin dato {res['horas_sin_dato']}; R0 {res['R0_t_anio']:.0f} t/año "
           f"(año completo {res['R0_t_anio_completo']:.0f})")
     r1 = res["R1"]
     st = r1["por_anio_estad"]
-    print(f"R1 (cuatro rotores): {r1['inst']:.1f} t/año (abr-nov {r1['abr-nov']:.1f}, dic-mar {r1['dic-mar']:.1f}, "
+    print(f"R1 (cuatro rotores): {r1['inst']:.1f} t/año (abr-oct {r1['abr-oct']:.1f}, abr-nov {r1['abr-nov']:.1f}, "
+          f"dic-mar {r1['dic-mar']:.1f}, "
           f"año completo {r1['año completo']:.1f}); inducida pagada {r1['inducida']:.1f} t/año")
     print("  por año: " + ", ".join(f"{y} {v:.0f}" for y, v in r1["por_anio"].items()) +
           f"  | media {st['media']:.1f}, dt {st['dt']:.1f} (CV {100 * st['cv']:.1f} %), {st['min']:.0f}-{st['max']:.0f}")
@@ -528,7 +536,7 @@ def report(res):
               f" | media {s['media']:.1f}, dt {s['dt']:.1f}, {s['min']:.1f}-{s['max']:.1f}")
         if topo == "T5":
             print("     reglas: " + ", ".join(f"{k} {d[k]:.1f}" for k in d if k.startswith(("literal", "prevista"))))
-    print("Atraque (horas reales, abril-noviembre): " + ", ".join(
+    print("Atraque (horas reales, abril-octubre): " + ", ".join(
         f"{k} {v['kW_medio_unidad']:.2f} kW/unidad, {v['t_anio']:.1f} t/año" for k, v in res["atraque"].items()))
 
 

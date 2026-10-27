@@ -6,8 +6,8 @@ del rotor abierto en Savonius y de los dos cilindros en Savonius (T3); (b) distr
 atraque (ERA5 2015-2024) en Portsmouth y Bilbao a 40 m y 55 m, con la potencia media por unidad.
 Mismas hipotesis que ruta_modelo.port_power: arranque 3 m/s, nominal 12 m/s, parada 20 m/s, eta_gen*eta_conv;
 desde el 21-10-2026 la curva de la VAWT sale del modelo DMST (ruta_modelo.vawt_power_curve), con la velocidad
-periferica limitada a 40 m/s. Versión 4 (26-10-2026): solo las estaciones del caso base (rm.BASE_SEASONS, abril-
-noviembre), como el resto del artículo; con seasons=(0, 1) se reproduce la figura del año completo.
+periferica limitada a 40 m/s. Versión 4 (26-10-2026): solo las estaciones del caso base (rm.BASE_SEASONS). Versión 5
+(27-10-2026): abril-octubre y viento solo en las horas de atraque del horario (histogramas condicionados).
 """
 import os
 import numpy as np

@@ -83,7 +83,11 @@ ETA_B_SCEN = {"B": (1.0, 12.0), "B'": (0.83, 12.0), "B''": (0.725, 6.0)}
 # Cota cinematica del Savonius (version 4): C_t,S >= KAPPA_S C_p,S, con la velocidad del cangilon en el centroide
 # de su proyeccion: r_c = (d - e)/2 = 1,6 m, R = D_S/2 = 3,6 m, lambda = 0,8.
 R_S, RC_S, LAMBDA_S = 3.6, 1.6, 0.8
-KAPPA_S = R_S / (LAMBDA_S * RC_S)
+# Versión 5 (revisión simulada v2, R2-1): la cota estricta usa la velocidad máxima de los cangilones, la del borde
+# exterior (omega R_S): C_t,S >= C_p,S / lambda = 1,25 C_p,S. Evaluada en el centroide de la proyección del cangilón
+# (versión 4) daba 2,81 C_p,S, que es una estimación con un radio efectivo supuesto, no una cota.
+KAPPA_S = 1.0 / LAMBDA_S
+KAPPA_S_CENTROIDE = R_S / (LAMBDA_S * RC_S)          # 2,8125: estimación de la versión 4
 CT_S_MAX = 1.0
 
 RANGES = dict(w=(0.0, 1.0), cd_mult=(0.8, 1.2), cd0=(0.4, 0.7), cf=(0.002, 0.007), cp_s=(0.14, 0.24),
@@ -94,17 +98,38 @@ CENTRAL = {k: 0.5 * (a + b) for k, (a, b) in RANGES.items()}
 # y factores de la prolongación y del rotor de 30 m de la línea sustentadora (linea_sustentadora.py): con la placa en
 # lo alto de la prolongación, f_X = 0,95-1,25 (1,0 si la circulación la fija el giro; hasta 1,25-1,3 con la analogía
 # de ala, porque el rotor principal deja de tener extremo); f30 = 0,95-1,15.
-RANGES_V4 = dict(RANGES, ct_s=(KAPPA_S * RANGES["cp_s"][0], CT_S_MAX), axc=(300.0, 600.0), cl_ext=(0.95, 1.25),
-                 f30=(0.95, 1.15))
-CENTRAL_V4 = dict(CENTRAL, ct_s=0.5 * (KAPPA_S * CENTRAL["cp_s"] + CT_S_MAX), axc=450.0, cl_ext=1.10, f30=1.05, w=1.0)
+# Versión 5 (revisión simulada v2, R2-3): f_X y f30 contrastados con la dependencia de C_L con el alargamiento de
+# De Marco et al. (2016, URANS con placa de/d = 2 y 3): f30 empírico 0,89-1,13 y f_X = f30 x (1,01-1,18), el cociente
+# del modelo de línea sustentadora con los dos modelos de sección (linea_sustentadora_validacion.py): f_X 0,90-1,30.
+RANGES_V4 = dict(RANGES, ct_s=(KAPPA_S * RANGES["cp_s"][0], CT_S_MAX), axc=(300.0, 600.0), cl_ext=(0.90, 1.30),
+                 f30=(0.90, 1.15))
+CENTRAL_V4 = dict(CENTRAL, ct_s=0.5 * (KAPPA_S * CENTRAL["cp_s"] + CT_S_MAX), axc=450.0, cl_ext=1.10, f30=1.025,
+                  w=1.0)
+RANGES_V4_ORIG = dict(RANGES, ct_s=(KAPPA_S_CENTROIDE * RANGES["cp_s"][0], CT_S_MAX), axc=(300.0, 600.0),
+                      cl_ext=(0.95, 1.25), f30=(0.95, 1.15))           # versión 4 (26-10-2026)
+CENTRAL_V4_ORIG = dict(CENTRAL, ct_s=0.5 * (KAPPA_S_CENTROIDE * CENTRAL["cp_s"] + CT_S_MAX), axc=450.0, cl_ext=1.10,
+                       f30=1.05, w=1.0)
 # Escenarios epistemicos de los coeficientes del rotor (version 4). A: referencia (el mas cercano al dato a escala
 # real); A+: A prolongado hasta k = 4 con U_s <= 46 m/s; AB: mezcla de la version 3; B: Bordogna con AR_eff 12; B':
 # B corregido con la linea sustentadora (analogia de ala, cubierta como plano de simetria); B'': sin reflexion.
+# Versión 5 (revisión simulada v2, R1-1 y R2-2): escenario A-VG, A con C_L multiplicado para que el empuje del modelo
+# en la ruta del Viking Grace, con las celdas de ERA5 de mar, iguale 207-282 kW (centro 244,5 kW);
+# validacion_viking_grace.py comprueba estos valores.
+CL_MULT_VG = {"207": 1.141, "244.5": 1.25, "282": 1.359}
 ESCENARIOS_COEF = {"A": dict(w=1.0), "A+": dict(w=1.0, k_max=4.0, us_max=46.0), "AB": dict(w=0.5),
                    "B": dict(w=0.0), "B'": dict(w=0.0, eta_b=ETA_B_SCEN["B'"][0], ar_b=ETA_B_SCEN["B'"][1]),
-                   "B''": dict(w=0.0, eta_b=ETA_B_SCEN["B''"][0], ar_b=ETA_B_SCEN["B''"][1])}
+                   "B''": dict(w=0.0, eta_b=ETA_B_SCEN["B''"][0], ar_b=ETA_B_SCEN["B''"][1]),
+                   "A-VG": dict(w=1.0, cl_mult=CL_MULT_VG["244.5"]),
+                   "A-VG 207": dict(w=1.0, cl_mult=CL_MULT_VG["207"]),
+                   "A-VG 282": dict(w=1.0, cl_mult=CL_MULT_VG["282"])}
 # rangos que se muestrean en la version 4 (escenario fijado): todos menos w
 RANGES_V4_MC = {k: v for k, v in RANGES_V4.items() if k != "w"}
+# version 5: la resistencia inducida sale del equilibrio de deriva y guiñada (maniobra.py); en lugar de e_span se
+# muestrean el término del casco c_H (0-1; el KVLCC2 de Yasukawa y Yoshimura 2015, X'_vv = -0,040 e Y'_v = -0,315,
+# equivale a c_H = 2 x 0,040 / 0,315 = 0,25), los coeficientes de forma de popa C_pa y C_wa y el centro de la fuerza
+# lateral del viento sobre el buque x_s (fracción de Lpp a proa de la maestra).
+RANGES_V5_MC = {k: v for k, v in RANGES_V4.items() if k not in ("w", "e_span")}
+RANGES_V5_MC.update(c_h=(0.0, 1.0), cpa=(0.65, 0.75), cwa=(0.80, 0.90), x_s=(0.05, 0.10))
 
 
 def ct_s_range(cp_s):

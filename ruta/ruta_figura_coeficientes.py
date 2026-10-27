@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Figura de la base de coeficientes del rotor (A1, apartado 3.2). Versión 4 (22-10-2026): escenarios epistémicos.
+Versión 5 (27-10-2026): banda del escenario A-VG (C_L de A por 1,14-1,36, ajustado al Viking Grace; C_D sin cambios).
 CL(k) y CD(k) de los conjuntos A (De Marco et al. 2016, AR 6, de/d 2; escenario de referencia) y B (Bordogna et al.
 2019, Re >= 3,6e5, más resistencia inducida de AR 6 sobre cubierta), B' (B con la corrección de la línea
 sustentadora) y la mezcla AB de la versión 3; tramo prolongado k = 3-4,6 (escenario A+ y sensibilidad), con los
@@ -57,6 +58,10 @@ def main():
     ax1.plot(cf.K_A[1:], cf.CL_A[1:], "o", ms=5, color=BLUE, label="De Marco et al. (2016), AR 6, $D_e/D_F$ = 2")
     ax1.plot(ak["k_CL"][1:], ak["CL"][1:], "D", ms=4, mfc="none", mec=GREY, mew=0.9,
              label="Ackeret, 120 mm endplates,\nvia Seifert (2012)")
+    lo_vg, hi_vg = cf.CL_MULT_VG["207"], cf.CL_MULT_VG["282"]
+    ax1.fill_between(k, lo_vg * cl_a, hi_vg * cl_a, color=BLUE, alpha=0.13, lw=0,
+                     label=f"A-VG: A with $C_L$ ×{lo_vg:.2f}–{hi_vg:.2f}\n(fitted to the Viking Grace)")
+    ax1.plot(k, cf.CL_MULT_VG["244.5"] * cl_a, color=BLUE, lw=0.9, ls=(0, (1, 1.2)))
     ax1.plot(k, cl_a, color=BLUE, lw=2.0, label="A (reference)")
     ax1.plot(kx, cl_ax, color=BLUE, lw=1.4, ls=(0, (4, 2)))
     ax1.plot(k, cl_ab, color=GREY, lw=1.0, label="AB (equal blend of A and B)")
@@ -64,7 +69,7 @@ def main():
     ax1.plot(kx, cl_bx, color=ORANGE, lw=1.1, ls=(0, (4, 2)))
     ax1.plot(k, cl_bp, color=ORANGE, lw=1.0, ls=(0, (1.5, 1.5)), label="B′ (lifting-line correction)")
     ax1.set_ylabel("Lift coefficient $C_L$")
-    ax1.set_ylim(0, 12)
+    ax1.set_ylim(0, 14)
     ax2.plot(bcd[:, 0], bcd[:, 1], "o", ms=3.2, mfc="none", mec=ORANGE, mew=0.8)
     ax2.plot(cf.K_A[1:], cf.CD_A[1:], "o", ms=5, color=BLUE)
     ax2.plot(ak["k_CD"][1:], ak["CD"][1:], "D", ms=4, mfc="none", mec=GREY, mew=0.9)
@@ -76,7 +81,8 @@ def main():
     ax2.plot(k, cd_bp, color=ORANGE, lw=1.0, ls=(0, (1.5, 1.5)))
     ax2.set_ylabel("Drag coefficient $C_D$ (B with induced drag)")
     ax2.set_ylim(0, 6.5)
-    ax1.legend(frameon=False, fontsize=6.3, loc="upper left", labelspacing=0.3)
+    h1, l1 = ax1.get_legend_handles_labels()
+    ax2.legend(h1, l1, frameon=False, fontsize=6.3, loc="upper left", labelspacing=0.3)
     for ext in ("png", "pdf"):
         fig.savefig(os.path.join(HERE, f"fig_coeficientes.{ext}"), dpi=300)
     print("k  CL_A CD_A  CL_B CD_B  CL_B' CD_B'")

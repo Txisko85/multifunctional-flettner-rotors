@@ -90,43 +90,43 @@
  },
  "casos": {
   "versión 3, a su propia velocidad": {
-   "rate": 2.4327858829867415,
-   "fpd": 139.55557130332596,
-   "v_mean": 17.432380952380953
+   "rate": 2.432785882986742,
+   "fpd": 139.55557130332602,
+   "v_mean": 17.43238095238095
   },
   "ley cúbica, sin viento, SFOC constante (versión 3), a igual velocidad": {
-   "rate": 2.146302711608094,
-   "fpd": 129.0957806502959,
-   "v_mean": 16.625661201291745,
-   "factor_velocidad": 0.9489772556114322
+   "rate": 2.1463027116080977,
+   "fpd": 129.09578065029604,
+   "v_mean": 16.625661201291756,
+   "factor_velocidad": 0.9489772556114331
   },
   "+ resistencia del viento sobre el buque, a igual velocidad": {
-   "rate": 2.230775916082671,
-   "fpd": 134.1766735815203,
-   "v_mean": 16.62566120129176,
-   "factor_velocidad": 0.9493432336782957
+   "rate": 2.2239073985863502,
+   "fpd": 133.76354610266932,
+   "v_mean": 16.625661201291752,
+   "factor_velocidad": 0.9493432336782948
   },
   "+ SFOC según la carga, a igual velocidad": {
-   "rate": 2.3148807985187707,
-   "fpd": 139.23541268475458,
-   "v_mean": 16.62566120129176,
-   "factor_velocidad": 0.9493432336782957
+   "rate": 2.3085481961810292,
+   "fpd": 138.8545194221607,
+   "v_mean": 16.625661201291752,
+   "factor_velocidad": 0.9493432336782948
   },
   "exponente 4, con viento y SFOC según la carga, a igual velocidad": {
-   "rate": 1.9747668255791049,
-   "fpd": 118.77824296249175,
-   "v_mean": 16.62566120129176,
-   "factor_velocidad": 0.9493432336782957
+   "rate": 1.9683321982984727,
+   "fpd": 118.39121310528934,
+   "v_mean": 16.625661201291752,
+   "factor_velocidad": 0.9493432336782948
   }
  },
  "margen_de_mar": {
   "3.0": {
-   "mu": 0.07283000837974214,
-   "factor_velocidad": 0.9493432336782957
+   "mu": 0.0766599102476448,
+   "factor_velocidad": 0.9493432336782948
   },
   "4.0": {
-   "mu": 0.34803433806396256,
-   "factor_velocidad": 0.9493432336782957
+   "mu": 0.35280219535629836,
+   "factor_velocidad": 0.9493432336782948
   }
  },
  "atraque_cota_kgph": [

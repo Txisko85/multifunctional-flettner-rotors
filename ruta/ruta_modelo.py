@@ -89,7 +89,10 @@ CF_FUEL = 3.15    # t CO2/t de combustible: cociente CO2/combustible del Galicia
                   # (3,1518; anual 3,13-3,20). Anexo I del Reglamento (UE) 2015/757: HFO 3,114, LFO 3,151, MGO 3,206.
 # Margen de mar (olas, ensuciamiento, operación fuera de diseño) sobre la potencia en aguas tranquilas, calibrado con
 # EU MRV 2021-2023 a la misma velocidad media (ruta_calibracion_mrv.py), por exponente de la curva.
-SEA_MARGIN = {3.0: 0.073, 4.0: 0.348}
+# Versión 5: recalibrado con los histogramas condicionados al horario y la resistencia inducida del equilibrio de
+# deriva y guiñada (versión 4: 0,073 y 0,348).
+SEA_MARGIN = {3.0: 0.077, 4.0: 0.353}
+SEA_MARGIN_V4 = {3.0: 0.073, 4.0: 0.348}
 
 # ---------------- Ruta y horario (públicos) ----------------
 NM_OPEN = {"C": 208.4, "B": 331.4}                   # mn de mar abierto: Canal y golfo
@@ -100,8 +103,23 @@ CROSSINGS = [("Portsmouth-Bilbao, jueves", "S", 36.0), ("Portsmouth-Bilbao, domi
 CROSSINGS_V1 = [("Portsmouth-Bilbao, jueves", "S", 37.0), ("Portsmouth-Bilbao, domingo", "S", 34.0),
                 ("Bilbao-Portsmouth, martes", "N", 31.75), ("Bilbao-Portsmouth, sabado", "N", 28.5)]
 PORT_HOURS_WEEK = {"BILBAO": 10.0, "PORTSMOUTH": 26.75}
-DAYS = {0: 244.0, 1: 121.25}                         # 0: abril-noviembre, 1: diciembre-marzo
-BASE_SEASONS = (0,)                                  # versión 4: servicio documentado de 2026 (abril-noviembre)
+# Versión 5: temporada de dos rotaciones semanales de abril a octubre. El horario de 2026 publicado termina el
+# domingo 1 de noviembre de 2026 y en 2025 la frecuencia de invierno (una rotación semanal) empezó en noviembre
+# (Brittany Ferries, nota de prensa); noviembre pasa a sensibilidad. Estaciones: 0 abril-octubre, 1 diciembre-marzo,
+# 2 noviembre. Hasta la versión 4: 0 abril-noviembre (244 días) y 1 diciembre-marzo (DAYS_V4).
+MONTH_DAYS = {1: 31.0, 2: 28.25, 3: 31.0, 4: 30.0, 5: 31.0, 6: 30.0, 7: 31.0, 8: 31.0, 9: 30.0, 10: 31.0, 11: 30.0,
+              12: 31.0}
+SEASON_MONTHS = {0: (4, 5, 6, 7, 8, 9, 10), 1: (12, 1, 2, 3), 2: (11,)}
+DAYS = {s: sum(MONTH_DAYS[m] for m in ms) for s, ms in SEASON_MONTHS.items()}   # 214; 121,25; 30
+DAYS_V4 = {0: 244.0, 1: 121.25}
+BASE_SEASONS = (0,)                                  # versión 5: abril-octubre (versión 4: abril-noviembre)
+ALL_SEASONS = (0, 1, 2)                              # año completo
+NOV_SEASONS = (0, 2)                                 # abril-noviembre (sensibilidad)
+WIND_FILE = "era5_ruta_horario.json"                 # versión 5: histogramas condicionados al horario
+
+
+def season_of_month(m):
+    return next(s for s, ms in SEASON_MONTHS.items() if m in ms)
 
 
 def apparent(u_w, gamma_deg, v_s):
@@ -110,13 +128,15 @@ def apparent(u_w, gamma_deg, v_s):
     return math.hypot(ux, uy), math.atan2(uy, ux)
 
 
-def spin_power(u_a, k, cf_skin=CF_SKIN, height=H_F):
-    """Potencia de giro (W) del rotor: fricción del cilindro y disco de la placa de extremo; k escalar o vector."""
+def spin_power(u_a, k, cf_skin=CF_SKIN, height=H_F, d=D_F):
+    """Potencia de giro (W) del rotor: fricción del cilindro y disco de la placa de extremo (diámetro 2d); k escalar
+    o vector."""
     u_s = np.asarray(k, float) * u_a
-    p_cyl = 0.5 * RHO * cf_skin * u_s ** 3 * math.pi * D_F * height
-    w = u_s / (D_F / 2)
-    re_d = np.maximum(w * R_E ** 2 / NU_AIR, 1.0)
-    p_disc = 0.5 * 0.146 * re_d ** -0.2 * RHO * w ** 3 * R_E ** 5
+    r_e = d                                              # placa de extremo De = 2D
+    p_cyl = 0.5 * RHO * cf_skin * u_s ** 3 * math.pi * d * height
+    w = u_s / (d / 2)
+    re_d = np.maximum(w * r_e ** 2 / NU_AIR, 1.0)
+    p_disc = 0.5 * 0.146 * re_d ** -0.2 * RHO * w ** 3 * r_e ** 5
     return p_cyl + p_disc
 
 
@@ -139,6 +159,7 @@ class P:
     def __init__(self, **kw):
         self.v1 = False        # True: versión del 18-10-2026 (horario sin corregir, sin resistencia inducida)
         self.v3 = False        # True: versión del 21-10-2026 (sin los cambios de la versión 4)
+        self.v4 = False        # True: resistencia inducida de la versión 4 (ala de bajo alargamiento con e_span)
         self.nivel0 = False    # True: coeficientes de nivel 0 y relación de giro fija
         self.cd = CD0_ROT      # solo nivel 0
         self.cl_ext = 1.0
@@ -175,8 +196,26 @@ class P:
         self.f_u = 1.0         # factor sobre el viento en el rotor (aceleración sobre la superestructura; validación)
         self.r1_only = False   # True: bin_terms calcula solo el rotor convencional (validación Viking Grace)
         self.int_frac, self.int_beta = 0.0, 30.0   # interferencia en tándem (sensibilidad): fracción y ángulo (grados)
+        self.cl_mult = 1.0     # versión 5: multiplicador de C_L (escenario ajustado al Viking Grace)
+        # versión 5: resistencia inducida con el equilibrio de deriva y guiñada con timón (maniobra.py) como forma
+        # cuadrática de la fuerza lateral total y de su momento de guiñada; "ala": dR = c Fy^2 con e_span (versión 4)
+        self.sir_model = "mmg"
+        self.x_s = 0.075       # centro de la fuerza lateral del viento sobre el buque (fracción de Lpp a proa)
+        self.x_u = 0.0         # centroide de las unidades (fracción de Lpp a proa; declarado: en la maestra)
+        self.c_h, self.cpa, self.cwa = 0.5, 0.70, 0.85   # término del casco y formas (maniobra.py, valores centrales)
+        self.m_cap = None      # envolvente estructural común (m_cap_value)
+        self.d_alt = 5.0       # diámetro del comparador de mayor diámetro (R1-D5), misma altura y relación De = 2D
+        self.turb_dang = 0.0   # giro (grados) de la corriente que llega a la turbina hacia el lado de la sustentación
         self.__dict__.update(cf.CENTRAL_V4)
         self.__dict__.update(kw)
+        if self.v1 or self.v3 or self.nivel0 or self.v4:
+            self.sir_model = kw.get("sir_model", "ala")
+        if self.v4:            # valores de la versión 4 (26-10-2026) que cambian en la versión 5
+            for k_, v_ in cf.CENTRAL_V4_ORIG.items():
+                if k_ not in kw:
+                    setattr(self, k_, v_)
+            if "sea_margin" not in kw:
+                self.sea_margin = SEA_MARGIN_V4.get(float(self.n_prop), 0.0)
         if self.v1 or self.v3 or self.nivel0:
             self.r0_wind, self.sfoc_curve, self.sea_margin, self.nm_open = False, False, 0.0, 540.0
             self.ct_s, self.cl_ext, self.t_draught = cf.CENTRAL["ct_s"], cf.CENTRAL["cl_ext"], T_DRAUGHT_V3
@@ -215,9 +254,54 @@ def rotor_coeffs(k, p):
     cd_a = np.interp(kc, ka, [p.cd0] + cda[1:])
     cl_b = p.eta_b * np.interp(kc, kb, clb)
     cd_b = np.interp(kc, kb, [p.cd0] + cdb[1:]) + cl_b ** 2 / (math.pi * p.ar_b)
-    cl = p.w * cl_a + (1.0 - p.w) * cl_b
+    cl = (p.w * cl_a + (1.0 - p.w) * cl_b) * p.cl_mult
     cd = p.w * cd_a + (1.0 - p.w) * cd_b
     return cl, p.cd0 + (cd - p.cd0) * p.cd_mult
+
+
+_QC = {}
+LPP = 200.0
+
+
+def _quad(v_s, p):
+    """Coeficientes (a, b, c) de dR = a Y^2 + b Y N + c N^2 a la velocidad v_s (m/s), con N en N m."""
+    key = (p.c_h, p.cpa, p.cwa)
+    if key not in _QC:
+        import maniobra
+        prm = dict(maniobra.CENTRAL, c_h=p.c_h, cpa=p.cpa, cwa=p.cwa)
+        _QC[key] = maniobra.quad_coeffs(1.0 / KN, prm)       # a 1 m/s; escalan con 1/U^2
+    a, b, c = _QC[key]
+    return a / v_s ** 2, b / v_s ** 2, c / v_s ** 2
+
+
+def induced(y, n_m, v_s, p):
+    """Resistencia inducida (N) por una fuerza lateral total y (N) con momento de guiñada n_m (N m)."""
+    if not p.sir or v_s <= 0.0:
+        return 0.0 * np.asarray(y, float)
+    if p.sir_model == "mmg":
+        a, b, c = _quad(v_s, p)
+        return a * y * y + b * y * n_m + c * n_m * n_m
+    return sir_coef(v_s, p) * y * y
+
+
+def m_cap_value(p):
+    """Momento máximo en la base (N m) de la envolvente común: None (sin límite), un número, 'ref' (el del rotor de
+    referencia a U_a = 20 m/s con k = min(k_max, U_s,max/U_a)) o '30m' (el del rotor de 30 m en ese mismo estado,
+    cimentación reforzada para él)."""
+    cap = getattr(p, "m_cap", None)
+    if cap is None or isinstance(cap, (int, float)):
+        return cap
+    key = ("_mcap", cap)
+    if key not in p.__dict__:
+        u_a = 20.0
+        k = np.array([min(p.k_max, p.us_max / u_a)])
+        cl, cd = rotor_coeffs(k, p)
+        q = 0.5 * RHO * u_a ** 2
+        m = float(q * A_F * np.hypot(cl, cd)[0] * H_F / 2.0)
+        if cap == "30m":
+            m += float(q * A_UP * np.hypot(p.f30 * cl, cd)[0] * (H_F + H_X / 2.0))
+        p.__dict__[key] = m
+    return p.__dict__[key]
 
 
 def sir_coef(v_s, p):
@@ -330,12 +414,12 @@ def bin_terms(u_rot, ratio, gamma, v_s, p):
     out = dict(rot=0.0, rot_fx=0.0, ext=0.0, vawt_opt=0.0, vawt_raw=0.0, sav=None, sav3=None,
                running=False, cosb=1.0, k=0.0, pen_r1=0.0, fy_r1=0.0, f_s=0.0,
                b_stop=0.0, ext_raw=None, vawt_ok=False, r0_wind=0.0, pen_self=0.0, pen_cross=0.0,
-               r30=0.0, b_stop30=0.0, spin_r1=0.0, rot_run=0.0)
+               r30=0.0, b_stop30=0.0, spin_r1=0.0, rot_run=0.0, r_d=0.0)
     eta_d = p.eta_d
-    c_sir = sir_coef(v_s, p)
+    xs_m, xu_m = p.x_s * LPP, p.x_u * LPP
     if p.r0_wind:
         x_s, fy_s0 = ship_wind(u_rot, gamma, v_s, p)
-        out["r0_wind"] = (x_s + c_sir * fy_s0 ** 2) * v_s / eta_d / 1e3
+        out["r0_wind"] = (x_s + float(induced(fy_s0, fy_s0 * xs_m, v_s, p))) * v_s / eta_d / 1e3
     if u_a < 0.5:
         return out
     q = 0.5 * RHO * u_a ** 2
@@ -345,11 +429,12 @@ def bin_terms(u_rot, ratio, gamma, v_s, p):
     # resistencia inducida: penalización por unidad (kW) para una fuerza lateral por unidad fy (N)
     f_s = ship_side_force(u_rot, gamma, v_s, p)
     out["f_s"] = f_s
-    k_pen = c_sir * v_s / eta_d / 1e3 / n_u
+    k_pen = v_s / eta_d / 1e3 / n_u
+    r_s0 = float(induced(f_s, f_s * xs_m, v_s, p))
 
     def pen(fy_unit):
-        tot = f_s + n_u * np.asarray(fy_unit, float)
-        return k_pen * (tot ** 2 - f_s ** 2)
+        fr = n_u * np.asarray(fy_unit, float)
+        return k_pen * (induced(f_s + fr, f_s * xs_m + fr * xu_m, v_s, p) - r_s0)
 
     k_max = min(p.k_max, p.us_max / u_a)
     grid = K_GRID if p.k_max <= SR_NOM else np.round(np.arange(0.25, p.k_max + 1e-4, 0.25), 2)
@@ -373,6 +458,13 @@ def bin_terms(u_rot, ratio, gamma, v_s, p):
     p_spin = spin_power(u_a, ks, p.cf)
     br_all = (fx * v_s / eta_d - p.kappa * p_spin / (ETA_MOT * ETA_CONV)) / 1e3
     run_all = br_all - pen(fy)
+    # versión 5 (revisión simulada v2, R1-3): envolvente estructural común. Con m_cap, cada configuración solo puede
+    # girar a las relaciones de giro cuyo momento flector en la base (fuerzas sumadas en módulo, como en
+    # ruta_momentos.py) no supera m_cap; si ninguna cabe, el rotor se para (la prolongación se recoge).
+    cap = m_cap_value(p)
+    m_rot = q * A_F * np.hypot(cl, cd) * H_F / 2.0
+    if cap is not None:
+        run_all = np.where(m_rot <= cap * (1 + 1e-9), run_all, -1e30)
     i = int(np.argmax(run_all))
     br = float(run_all[i])
     # rotor parado: resistencia del cilindro (cuenta si p.stop_drag)
@@ -389,8 +481,8 @@ def bin_terms(u_rot, ratio, gamma, v_s, p):
     out["fy_r1"] = fy_r1
     out["pen_r1"] = float(pen(fy_r1))
     # reparto de la inducida de R1 (por unidad): término propio de las unidades y término cruzado con el buque
-    out["pen_self"] = k_pen * (n_u * fy_r1) ** 2
-    out["pen_cross"] = k_pen * 2.0 * f_s * n_u * fy_r1
+    out["pen_self"] = k_pen * float(induced(n_u * fy_r1, n_u * fy_r1 * xu_m, v_s, p))
+    out["pen_cross"] = out["pen_r1"] - out["pen_self"]
     if running:
         out["k"] = float(ks[i])
         out["rot_fx"] = float(fx[i]) * v_s / eta_d / 1e3
@@ -410,6 +502,9 @@ def bin_terms(u_rot, ratio, gamma, v_s, p):
         fy_x = qt * A_X * (p.cl_ext * cl_x * cbt + cd_x * sbt)
         p_x = 0.5 * RHO * p.cf * u_sx ** 3 * math.pi * D_X * H_X
         tot = br_all + (fx_x * v_s / eta_d - p.kappa * p_x / (ETA_MOT * ETA_CONV)) / 1e3 - pen(fy + fy_x)
+        if cap is not None:
+            m_x = m_rot + qt * A_X * np.hypot(p.cl_ext * cl_x, cd_x) * (H_F + H_X / 2.0)
+            tot = np.where(m_x <= cap * (1 + 1e-9), tot, -1e30)
         out["ext_raw"] = float(tot.max()) - out["rot"]          # incremento sin recortar (modelo horario)
         out["ext"] = max(out["ext_raw"], 0.0)
     # rotor de 30 m (comparador R1-30): tramo superior de 6 m con el diámetro del rotor y la misma velocidad angular,
@@ -421,8 +516,11 @@ def bin_terms(u_rot, ratio, gamma, v_s, p):
         fx_u = qt * A_UP * (p.f30 * cl_u * sbt - cd_u * cbt)
         fy_u = qt * A_UP * (p.f30 * cl_u * cbt + cd_u * sbt)
         p_u = 0.5 * RHO * p.cf * u_s30 ** 3 * math.pi * D_F * H_X
-        run30 = float(np.max(br_all + (fx_u * v_s / eta_d - p.kappa * p_u / (ETA_MOT * ETA_CONV)) / 1e3
-                             - pen(fy + fy_u)))
+        run30_all = br_all + (fx_u * v_s / eta_d - p.kappa * p_u / (ETA_MOT * ETA_CONV)) / 1e3 - pen(fy + fy_u)
+        if cap is not None:
+            m_30 = m_rot + qt * A_UP * np.hypot(p.f30 * cl_u, cd_u) * (H_F + H_X / 2.0)
+            run30_all = np.where(m_30 <= cap * (1 + 1e-9), run30_all, -1e30)
+        run30 = float(np.max(run30_all))
         bs30 = -p.cd0 * qt * A_UP * cbt * v_s / eta_d / 1e3
         fys30 = p.cd0 * qt * A_UP * sbt
         if p.stop_drag:
@@ -430,6 +528,27 @@ def bin_terms(u_rot, ratio, gamma, v_s, p):
         else:
             stop30 = 0.0
         out["r30"], out["b_stop30"] = max(run30, stop30), stop30
+    # rotor de mayor diámetro y la misma altura (comparador R1-D5, versión 5): mismos coeficientes (con placa, C_L
+    # apenas depende del alargamiento en De Marco et al. 2016), área y potencia de giro con su diámetro, la misma
+    # velocidad periférica máxima
+    if not p.nivel0 and not p.r1_only:
+        d_a = p.d_alt
+        a_d = d_a * H_F
+        ks_d = grid[grid <= k_max + 1e-9]
+        if ks_d.size == 0 or ks_d[-1] < k_max - 1e-9:
+            ks_d = np.append(ks_d, k_max)
+        cl_d, cd_d = rotor_coeffs(ks_d, p)
+        cl_d = cl_d * f_int
+        fx_d = q * a_d * (cl_d * sb - cd_d * cb)
+        fy_d = q * a_d * (cl_d * cb + cd_d * sb)
+        p_d = spin_power(u_a, ks_d, p.cf, d=d_a)
+        run_d = (fx_d * v_s / eta_d - p.kappa * p_d / (ETA_MOT * ETA_CONV)) / 1e3 - pen(fy_d)
+        if cap is not None:
+            run_d = np.where(q * a_d * np.hypot(cl_d, cd_d) * H_F / 2.0 <= cap * (1 + 1e-9), run_d, -1e30)
+        b_stop_d = -p.cd0 * q * a_d * cb * v_s / eta_d / 1e3
+        fy_stop_d = p.cd0 * q * a_d * sb
+        stop_d = (b_stop_d - float(pen(fy_stop_d))) if p.stop_drag else 0.0
+        out["r_d"] = max(float(np.max(run_d)), stop_d)
     # VAWT en el extremo
     if p.turb != "dmst" and u_at <= UA_CUT_T:          # versiones 1 y 2: Cp y Cp/Ct supuestos, sin turbina parada
         p_t = qt * u_at * A_X * p.cp_t
@@ -464,9 +583,11 @@ def bin_terms(u_rot, ratio, gamma, v_s, p):
             inter, fy_inter = 0.0, 0.0
             signs = (1.0, -1.0)
         best = -np.inf
+        bt_t = bt_ang + math.radians(p.turb_dang)        # corriente girada por el rotor (sensibilidad)
+        sbt_t, cbt_t = math.sin(bt_t), math.cos(bt_t)
         for sg in signs:
-            fx_t = sg * sf * sbt - th * cbt
-            fy_t = sg * sf * cbt + th * sbt
+            fx_t = sg * sf * sbt_t - th * cbt_t
+            fy_t = sg * sf * cbt_t + th * sbt_t
             bt = (fx_t * v_s / eta_d + p.kappa * saved_e + inter) / 1e3 - (pen(fy_r1 + fy_t + fy_inter) - pen(fy_r1))
             best = max(best, float(np.max(bt)))
         out["vawt_raw"], out["vawt_opt"] = best, max(best, 0.0)
@@ -520,6 +641,8 @@ def topologies(t):
         "T5 popa": sav_popa,
         "R1t": max(0.0, -r1),
         "R1-30": t["r30"] - r1,
+        "R1-D5": t["r_d"] - r1,
+        "R1t+X": max(0.0, t["rot_run"], r1 + be) - r1,
         "_pen R1": t["pen_r1"],          # diagnóstico: resistencia inducida que paga R1 (kW por unidad)
         "_pen propio": t["pen_self"],
         "_pen cruzado": t["pen_cross"],
@@ -531,8 +654,45 @@ def topologies(t):
     }
 
 
-def load_wind(path="era5_ruta.json"):
+def load_wind(path=None):
+    """Histogramas de viento. Por defecto (versión 5), los condicionados al horario (era5_horario_condicionado.py):
+    por tipo de travesía y estación, y en puerto solo en las horas de atraque. Con path = 'era5_ruta.json', los de
+    la versión 4 (todas las horas de cada punto; estaciones abril-noviembre y diciembre-marzo)."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    path = os.path.join(here, WIND_FILE) if path is None else path
+    if not os.path.isabs(path) and not os.path.exists(path):
+        path = os.path.join(here, path)
     d = json.load(open(path, encoding="utf-8"))
+    if "travesias" in d:
+        nu, ng = d["meta"]["NU"], d["meta"]["NG"]
+        groups = {"_cond": True, "trav": {}}
+        for name, months in d["travesias"].items():
+            groups["trav"][name] = {}
+            for s, ms in SEASON_MONTHS.items():
+                F, rs, rc = np.zeros((nu, ng)), np.zeros(nu), np.zeros(nu)
+                for m in ms:
+                    e = months.get(str(m))
+                    if e:
+                        F += np.array(e["F"], float)
+                        rs += np.array(e["rs"], float)
+                        rc += np.array(e["rc"], float)
+                ratio = np.where(rc > 0, rs / np.where(rc > 0, rc, 1.0), np.nan)
+                last = 1.0
+                for i in range(nu):                     # casillas sin horas: la razón de la fila anterior
+                    if np.isfinite(ratio[i]):
+                        last = ratio[i]
+                    ratio[i] = last
+                groups["trav"][name][s] = dict(F=F / F.sum() if F.sum() > 0 else F, ratio=ratio)
+        d["ports"] = {}
+        for prt, months in d["puertos"].items():
+            hr, ht, ns = {}, {}, {}
+            for s, ms in SEASON_MONTHS.items():
+                es = [months[str(m)] for m in ms if str(m) in months]
+                hr[s] = np.sum([e["hr"] for e in es], axis=0)
+                ht[s] = np.sum([e["ht"] for e in es], axis=0)
+                ns[s] = float(sum(e["h"] for e in es))
+            d["ports"][prt] = dict(hr=hr, ht=ht, ns=ns)
+        return d, groups, nu, ng
     nu, ng = d["meta"]["NU"], d["meta"]["NG"]
 
     def ffill(vals):
@@ -548,18 +708,34 @@ def load_wind(path="era5_ruta.json"):
     return d, groups, nu, ng
 
 
+def is_cond(groups):
+    return isinstance(groups, dict) and groups.get("_cond", False)
+
+
+def season_days(groups):
+    return DAYS if is_cond(groups) else DAYS_V4
+
+
+def hist_entries(groups, season, name):
+    """(peso, F, ratio) de los histogramas que representan una travesía en una estación."""
+    if is_cond(groups):
+        e = groups["trav"][name][season]
+        return [(1.0, e["F"], e["ratio"])]
+    w_tot = sum(NM_OPEN.values())
+    return [(NM_OPEN[g] / w_tot, gd["F"][season], gd["ratio"][season]) for g, gd in groups.items()]
+
+
 def crossing_speed(hours, p):
     t_open = hours - NM_APPROACH / V_APPROACH
     return p.nm_open / t_open + p.dv, t_open
 
 
-def mean_benefits(groups, nu, ng, season, direction, v_kn, p):
-    """Media temporal por unidad (kW) de cada topología en una travesía."""
+def mean_benefits(groups, nu, ng, season, direction, v_kn, p, name=None):
+    """Media temporal por unidad (kW) de cada topología en una travesía (name: tipo de travesía, necesario con los
+    histogramas condicionados al horario)."""
     v = v_kn * KN
-    acc, w_tot = {}, sum(NM_OPEN.values())
-    for g, gd in groups.items():
-        F, ratio = gd["F"][season], gd["ratio"][season]
-        wg = NM_OPEN[g] / w_tot
+    acc = {}
+    for wg, F, ratio in hist_entries(groups, season, name):
         for iu in range(nu):
             u = iu + 0.5
             for ig in range(ng):
@@ -575,17 +751,14 @@ def mean_benefits(groups, nu, ng, season, direction, v_kn, p):
     return acc
 
 
-def r0_wind_power(groups, nu, ng, season, direction, v_kn, p):
+def r0_wind_power(groups, nu, ng, season, direction, v_kn, p, name=None):
     """Media de la potencia (kW, todo el buque) que el viento sobre casco y superestructura añade a R0 en una
     travesía: lo mismo que la clave '_R0 viento' de mean_benefits, sin calcular las topologías."""
     if not p.r0_wind:
         return 0.0
     v = v_kn * KN
-    c_sir = sir_coef(v, p)
-    acc, w_tot = 0.0, sum(NM_OPEN.values())
-    for g, gd in groups.items():
-        F = gd["F"][season]
-        wg = NM_OPEN[g] / w_tot
+    acc = 0.0
+    for wg, F, _ in hist_entries(groups, season, name):
         for iu in range(nu):
             for ig in range(ng):
                 f = F[iu, ig]
@@ -595,7 +768,7 @@ def r0_wind_power(groups, nu, ng, season, direction, v_kn, p):
                 if direction == "N":
                     gam = 180.0 - gam
                 x_s, fy_s = ship_wind(iu + 0.5, gam, v, p)
-                acc += wg * f * (x_s + c_sir * fy_s ** 2) * v / p.eta_d / 1e3
+                acc += wg * f * (x_s + float(induced(fy_s, fy_s * p.x_s * LPP, v, p))) * v / p.eta_d / 1e3
     return acc
 
 
@@ -613,12 +786,14 @@ def port_power(d, nu, p=None):
     u = np.arange(nu) + 0.5
     for port, pd in d["ports"].items():
         res[port] = []
-        for s in (0, 1):
+        for s in pd["ns"] if isinstance(pd["ns"], dict) else (0, 1):
             hr, ht, n = np.array(pd["hr"][s], float), np.array(pd["ht"][s], float), pd["ns"][s]
             vawt = float((vawt_power_curve(u, p) * ht).sum() / n)
             sav = float((power_curve(p.ds * A_F, p.cp_s, u) * hr).sum() / n)
             sav3 = float((power_curve(p.ds * (A_F + A_X), p.cp_s, u) * hr).sum() / n)
-            res[port].append(dict(vawt=vawt, sav=sav, sav3=sav3))
+            if isinstance(res[port], list):
+                res[port] = {}
+            res[port][s] = dict(vawt=vawt, sav=sav, sav3=sav3)
     return res
 
 
@@ -653,11 +828,12 @@ def annual(d, groups, nu, ng, p=None, seasons=None):
     fuel_me = 0.0
     hours_sea = 0.0
     loads = []
+    days = season_days(groups)
     for s in seasons:
-        weeks = DAYS[s] / 7.0
+        weeks = days[s] / 7.0
         for name, direction, hours in crossings(p):
             v_kn, t_open = crossing_speed(hours, p)
-            mb = mean_benefits(groups, nu, ng, s, direction, v_kn, p)
+            mb = mean_benefits(groups, nu, ng, s, direction, v_kn, p, name=name)
             p_wind = mb.get("_R0 viento", 0.0)
             f_cross, f_marg, load = crossing_fuel(v_kn, t_open, p_wind, p)
             loads.append(load)
@@ -671,7 +847,7 @@ def annual(d, groups, nu, ng, p=None, seasons=None):
     port = {"T1": 0.0, "T2": 0.0, "T3": 0.0, "T4": 0.0, "T5": 0.0}
     hours_port = 0.0
     for s in seasons:
-        weeks = DAYS[s] / 7.0
+        weeks = days[s] / 7.0
         for prt, h in PORT_HOURS_WEEK.items():
             e = p.n_units * h * weeks * SFOC_AE / 1e6
             port["T1"] += e * pp[prt][s]["vawt"]

@@ -5,6 +5,7 @@ Fig. 2 de A1 (flujo de evaluación), generada como SVG estático a partir del wi
 y convertida a PDF vectorial y PNG con Chromium (Playwright). Sin título dentro de la figura: va en el pie.
 Versión 4 (22-10-2026): escenarios de coeficientes y línea sustentadora, contraste a escala real (EU MRV y Viking
 Grace), comparadores no patentados, controladores causal y predictivo, valor económico y regulatorio, índices de Sobol.
+Versión 5 (27-10-2026): el contraste con el Viking Grace comprueba el modelo del rotor («checks»), no elige los datos.
 """
 import os
 from playwright.sync_api import sync_playwright
@@ -51,7 +52,7 @@ def svg():
     parts.append(txt(692, 292, "samples inputs", size=11.5, color=QUIET, anchor="end"))
     parts.append(txt(692, 306, "per scenario", size=11.5, color=QUIET, anchor="end"))
     parts.append(txt(68, 292, "calibrates", size=11.5, color=QUIET, anchor="start"))
-    parts.append(txt(68, 306, "and selects", size=11.5, color=QUIET, anchor="start"))
+    parts.append(txt(68, 306, "and checks", size=11.5, color=QUIET, anchor="start"))
     parts.append(block(24, 56, 216, 72, "ERA5 winds", ["Hourly, at 10 m and 100 m",
                                                        "Two routes and two ports"]))
     parts.append(block(272, 56, 216, 72, "Ship and route", ["Power curve, sea margin, SFOC",

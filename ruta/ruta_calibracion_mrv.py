@@ -3,7 +3,8 @@
 """
 Contraste del modelo del buque sin rotores (ruta_modelo.py, caso R0) con los datos públicos EU MRV del Galicia
 (IMO 9856189) descargados de EMSA THETIS-MRV el 18-10-2026 (mrv_galicia.json), y calibración del margen de mar.
-Versión 4 (22-10-2026).
+Versión 4 (22-10-2026). Versión 5 (27-10-2026): viento de todo el año de los histogramas condicionados al horario
+(era5_horario_condicionado.py) y resistencia inducida del equilibrio de deriva y guiñada (ruta_modelo.induced).
 
 Alcance de EU MRV para un ferry Reino Unido-España después del Brexit: incluye todas las travesías (cada una sale de o
 llega a un puerto de la UE) y el atraque en puertos de la UE, pero no el atraque en puertos del Reino Unido. Se usan
@@ -26,7 +27,7 @@ import ruta_modelo as rm
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 YEARS_UK_EU = ("2021", "2022", "2023")
-SEASONS_YEAR = (0, 1)
+SEASONS_YEAR = rm.ALL_SEASONS          # versión 5: abril-octubre, diciembre-marzo y noviembre
 
 
 def load_mrv():
@@ -67,15 +68,17 @@ def model_at(p, factor, wind):
     viento de todo el año: t/h, kg/mn y velocidad media (distancia entre horas en el mar, con las aproximaciones)."""
     d, groups, nu, ng = wind
     fuel = hours = dist = 0.0
-    for s in SEASONS_YEAR:
-        weeks = rm.DAYS[s] / 7.0
+    days = rm.season_days(groups)
+    for s in (SEASONS_YEAR if rm.is_cond(groups) else (0, 1)):
+        weeks = days[s] / 7.0
         for name, direction, h in rm.crossings(p):
             v0, _ = rm.crossing_speed(h, p)
             v = v0 * factor
             t_open = p.nm_open / v
-            key = (s, direction, round(v, 9), p.r0_wind, p.axc, p.ayc, p.e_span, p.eta_d)
+            key = (s, name, round(v, 9), p.r0_wind, p.axc, p.ayc, p.e_span, p.eta_d, p.sir_model, p.x_s, p.c_h,
+                   rm.is_cond(groups))
             if key not in _PW:
-                _PW[key] = rm.r0_wind_power(groups, nu, ng, s, direction, v, p)
+                _PW[key] = rm.r0_wind_power(groups, nu, ng, s, direction, v, p, name=name)
             f, _, _ = rm.crossing_fuel(v, t_open, _PW[key], p)
             fuel += f * weeks
             hours += (t_open + rm.NM_APPROACH / rm.V_APPROACH) * weeks

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Figura del modelo horario (A1; versión 4, 22-10-2026): (a) ahorro de R1 y aumento de T3x por año, 2015-2024, con el
-horario de 2026 de abril a noviembre (caso base); (b) aumento sobre R1 de la prolongación (T3x), del rotor abatible
+Figura del modelo horario (A1; versión 5, 27-10-2026): (a) ahorro de R1 y aumento de T3x por año, 2015-2024, con el
+horario de 2026 de abril a octubre (caso base); (b) aumento sobre R1 de la prolongación (T3x), del rotor abatible
 (R1t, comparador) y de la turbina retráctil (T4) frente al tiempo de cada cambio de modo, con control óptimo
 (programación dinámica, conociendo el viento de la travesía), causal (persistencia L = 6 h), hora a hora y, a
 tau = 0,25 h, control predictivo con previsión buena y mala (horizonte de 12 h).
