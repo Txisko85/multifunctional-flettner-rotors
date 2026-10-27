@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
 era5_cache/
+era5_cache_vg/
 ruta/montecarlo_muestras*.npz
 ruta/fig_*.pdf
 ruta/fig_*.png
@@ -9,6 +10,7 @@ turbina/fig_*.png
 figuras/fig_*.pdf
 figuras/fig_*.png
 figuras/fig_*.svg
+figuras/fig_*.tif
 .DS_Store
 Thumbs.db
 desktop.ini

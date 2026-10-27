@@ -8,14 +8,16 @@ licence of their source (see Turbine data), and the coastlines in `ruta/datos_ma
 
 ## ERA5 wind
 
-Files: `datos/era5_horario_ruta.csv.gz`, `ruta/era5_ruta.json`, `ruta/era5_ruta_desde_horario.json`.
+Files: `datos/era5_horario_ruta.csv.gz`, `datos/era5_horario_viking_grace.csv.gz`, `ruta/era5_ruta.json`,
+`ruta/era5_ruta_desde_horario.json`.
 
 ERA5 hourly reanalysis (Hersbach et al., 2020, https://doi.org/10.1002/qj.3803), © European Centre for Medium-Range
 Weather Forecasts (ECMWF), produced by the Copernicus Climate Change Service and licensed under CC BY 4.0.
 Retrieved through the Open-Meteo Historical Weather API with `models=era5` (weather data by Open-Meteo.com,
 https://open-meteo.com/; Zippenfenig, 2023, https://doi.org/10.5281/zenodo.7970649), licensed under CC BY 4.0.
 
-Changes: wind speed at 10 m and 100 m and wind direction at 100 m, at 12 locations, 2015–2024, written to CSV.
+Changes: wind speed at 10 m and 100 m and wind direction at 100 m, 2015–2024, written to CSV, at 12 locations on the
+route of the Galicia and 10 on the route of the Viking Grace.
 `ruta/era5_ruta.json` and `ruta/era5_ruta_desde_horario.json` aggregate these series into wind histograms by route
 group and season.
 
@@ -38,8 +40,9 @@ publications remain the reference and should be cited.
   https://doi.org/10.1016/j.jweia.2019.02.006
 - `ruta/datos_coef/ackeret_seifert_fig27.json`: Ackeret's data as reproduced in Fig. 27 of Seifert J. A review of the
   Magnus effect in aeronautics. Prog Aerosp Sci 2012;55:17–45. https://doi.org/10.1016/j.paerosci.2012.07.001
-- `ruta/coeficientes.py` contains values read from Fig. 10 of De Marco A, Mancini S, Pensa C, Calise G, De Luca F.
-  Flettner rotor concept for marine applications: a systematic study. Int J Rotating Mach 2016;2016:3458750.
+- `ruta/datos_coef/demarco2016_fig10.json` (and the values used in `ruta/coeficientes.py`): lift and drag
+  coefficients read from Fig. 10 of De Marco A, Mancini S, Pensa C, Calise G, De Luca F. Flettner rotor concept for
+  marine applications: a systematic study. Int J Rotating Mach 2016;2016:3458750.
   https://doi.org/10.1155/2016/3458750
 
 ## Turbine data

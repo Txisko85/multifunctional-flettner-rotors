@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Fig. 1 de A1 (flujo de evaluación), generada como SVG estático a partir del widget del borrador (pub 3, 19-10-2026)
+Fig. 2 de A1 (flujo de evaluación), generada como SVG estático a partir del widget del borrador (pub 3, 19-10-2026)
 y convertida a PDF vectorial y PNG con Chromium (Playwright). Sin título dentro de la figura: va en el pie.
+Versión 4 (22-10-2026): escenarios de coeficientes y línea sustentadora, contraste a escala real (EU MRV y Viking
+Grace), comparadores no patentados, controladores causal y predictivo, valor económico y regulatorio, índices de Sobol.
 """
 import os
 from playwright.sync_api import sync_playwright
@@ -35,34 +37,40 @@ def block(x, y, w, h, title, lines, main=False):
 def svg():
     arrows = ["M380 148V168", "M380 224V264", "M228 356V376", "M532 356V376", "M380 468V488", "M560 524H592",
               "M700 496V128"]
-    plain = ["M132 128V148", "M380 128V148", "M628 128V148", "M132 148H628", "M380 336V356", "M228 356H532",
-             "M228 448V468", "M532 448V468", "M228 468H532"]
+    plain = ["M132 128V148", "M380 128V148", "M628 128V148", "M60 148H628", "M380 336V356", "M228 356H532",
+             "M228 448V468", "M532 448V468", "M228 468H532", "M168 524H200"]
+    up = ["M60 496V148"]
     parts = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 {Y0} 760 {H}" width="760" height="{H}" '
              f'font-family="Inter, DejaVu Sans, Arial, sans-serif">',
              '<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" '
              f'orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="{EDGE}"/></marker></defs>',
              f'<g fill="none" stroke="{EDGE}" stroke-width="1.25">']
     parts += [f'<path d="{d}"/>' for d in plain]
-    parts += [f'<path d="{d}" marker-end="url(#arr)"/>' for d in arrows]
+    parts += [f'<path d="{d}" marker-end="url(#arr)"/>' for d in arrows + up]
     parts.append("</g>")
-    parts.append(txt(692, 292, "resamples", size=11.5, color=QUIET, anchor="end"))
-    parts.append(txt(692, 306, "coefficients", size=11.5, color=QUIET, anchor="end"))
-    parts.append(block(24, 56, 216, 72, "ERA5 winds", ["Hourly, at 10 m and 100 m", "Along the route and at ports"]))
-    parts.append(block(272, 56, 216, 72, "Ship and route", ["Power–speed curve and SFOC",
-                                                            "Timetable and time at berth"]))
-    parts.append(block(520, 56, 216, 72, "Coefficient database", ["Configurations C0 to C3",
-                                                                  "Central values and ranges"]))
+    parts.append(txt(692, 292, "samples inputs", size=11.5, color=QUIET, anchor="end"))
+    parts.append(txt(692, 306, "per scenario", size=11.5, color=QUIET, anchor="end"))
+    parts.append(txt(68, 292, "calibrates", size=11.5, color=QUIET, anchor="start"))
+    parts.append(txt(68, 306, "and selects", size=11.5, color=QUIET, anchor="start"))
+    parts.append(block(24, 56, 216, 72, "ERA5 winds", ["Hourly, at 10 m and 100 m",
+                                                       "Two routes and two ports"]))
+    parts.append(block(272, 56, 216, 72, "Ship and route", ["Power curve, sea margin, SFOC",
+                                                            "Documented timetable, berth time"]))
+    parts.append(block(520, 56, 216, 72, "Coefficient scenarios", ["Configurations C0 to C3",
+                                                                   "Lifting line for f<tspan baseline-shift=\"sub\" font-size=\"9\">X</tspan>, f<tspan baseline-shift=\"sub\" font-size=\"9\">30</tspan> and ε"]))
     parts.append(block(200, 168, 360, 56, "Hourly state", ["Ship position, true and apparent wind, spin ratio"]))
     parts.append(block(160, 264, 440, 72, "Benefit of each admissible mode",
-                       ["Forces, spin power, turbine power and induced resistance",
+                       ["Forces, spin power, turbine power, ship windage, induced resistance",
                         "Every flow converted into fuel at its point of entry"]))
-    parts.append(block(96, 376, 264, 72, "Optimal strategy", ["Best mode each hour; with a switching",
-                                                              "cost, by dynamic programming"]))
-    parts.append(block(400, 376, 264, 72, "Rule-based strategy", ["Favourable or unfavourable wind,",
-                                                                  "as in the patent rules"]))
-    parts.append(block(200, 488, 360, 72, "Annual fuel and CO₂ per topology",
-                       ["At sea and at berth, relative to R1", "Ranking, cost of rules and switching, ε*"], main=True))
-    parts.append(block(592, 496, 144, 56, "Monte Carlo", ["N = 1,000 samples"]))
+    parts.append(block(96, 376, 264, 72, "Optimal and causal control", ["Dynamic programming with switching",
+                                                                       "cost; persistence and forecasts"]))
+    parts.append(block(400, 376, 264, 72, "Rule-based strategy", ["Claim 1 and intended readings",
+                                                                  "of the patent rules"]))
+    parts.append(block(200, 488, 360, 72, "Annual fuel, CO₂ and value",
+                       ["Topologies and comparators, at sea and at berth", "Cost of switching; ETS and FuelEU value"],
+                       main=True))
+    parts.append(block(24, 496, 144, 56, "Full-scale checks", ["EU MRV; Viking Grace"]))
+    parts.append(block(592, 496, 144, 56, "Sobol indices", ["Saltelli design"]))
     parts.append("</svg>")
     return "\n".join(parts)
 

@@ -23,10 +23,12 @@ authors:
 abstract: >-
   Python reduced-order models and data comparing a conventional Flettner rotor with multifunctional rotors (a
   vertical-axis wind turbine that assists their spin or generates electricity, a telescopic extension, or opening
-  into a Savonius turbine) on the ro-pax ferry Galicia on the Portsmouth–Bilbao route, at sea and at berth, with
-  hourly ERA5 winds for 2015–2024, a double-multiple streamtube model of the turbine validated against wind-tunnel
-  and field data, optimal versus rule-based switching between modes and a Monte Carlo analysis of coefficient
-  uncertainty.
+  into a Savonius turbine) and with a taller, a tiltable and a fifth rotor, on the ro-pax ferry Galicia on the
+  Portsmouth–Bilbao route, at sea and at berth, with hourly ERA5 winds for 2015–2024. Includes the calibration of
+  the ship model against EU MRV reports, a full-scale check of the rotor model on the route of the Viking Grace, a
+  double-multiple streamtube model of the turbine validated against wind-tunnel and field data, a lifting-line
+  model of deck-mounted rotors, a sway–yaw balance with rudder, optimal, causal and predictive switching between
+  modes, the valuation under the EU ETS, the UK ETS and FuelEU Maritime, and a Sobol sensitivity analysis.
 keywords:
   - Flettner rotor
   - wind-assisted ship propulsion

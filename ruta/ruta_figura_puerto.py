@@ -6,7 +6,8 @@ del rotor abierto en Savonius y de los dos cilindros en Savonius (T3); (b) distr
 atraque (ERA5 2015-2024) en Portsmouth y Bilbao a 40 m y 55 m, con la potencia media por unidad.
 Mismas hipotesis que ruta_modelo.port_power: arranque 3 m/s, nominal 12 m/s, parada 20 m/s, eta_gen*eta_conv;
 desde el 21-10-2026 la curva de la VAWT sale del modelo DMST (ruta_modelo.vawt_power_curve), con la velocidad
-periferica limitada a 40 m/s.
+periferica limitada a 40 m/s. Versión 4 (26-10-2026): solo las estaciones del caso base (rm.BASE_SEASONS, abril-
+noviembre), como el resto del artículo; con seasons=(0, 1) se reproduce la figura del año completo.
 """
 import os
 import numpy as np
@@ -33,22 +34,23 @@ def curve(key, area, cp, u, p):
     return rm.vawt_power_curve(u, p) if key == "vawt" else power_curve(area, cp, u)
 
 
-def summary(d, nu, p):
+def summary(d, nu, p, seasons=rm.BASE_SEASONS):
     pp = rm.port_power(d, nu, p)
-    w_s = {s: rm.DAYS[s] / sum(rm.DAYS.values()) for s in (0, 1)}
-    per_port = {prt: {k: sum(w_s[s] * pp[prt][s][k] for s in (0, 1)) for k in ("vawt", "sav", "sav3")}
+    days = sum(rm.DAYS[s] for s in seasons)
+    w_s = {s: rm.DAYS[s] / days for s in seasons}
+    per_port = {prt: {k: sum(w_s[s] * pp[prt][s][k] for s in seasons) for k in ("vawt", "sav", "sav3")}
                 for prt in pp}
     h = rm.PORT_HOURS_WEEK
     w_p = {prt: h[prt] / sum(h.values()) for prt in h}
     overall = {k: sum(w_p[prt] * per_port[prt][k] for prt in h) for k in ("vawt", "sav", "sav3")}
-    hours = sum(h.values()) * sum(rm.DAYS.values()) / 7.0
+    hours = sum(h.values()) * days / 7.0
     return pp, per_port, overall, hours
 
 
-def main():
+def main(seasons=rm.BASE_SEASONS):
     d, groups, nu, ng = rm.load_wind()
     p = rm.P()
-    pp, per_port, overall, hours = summary(d, nu, p)
+    pp, per_port, overall, hours = summary(d, nu, p, seasons)
     devices = (("vawt", "VAWT\n(T1, T2, T4), 55 m", rm.A_X, p.cp_t, "-", 0.8, "bottom"),
                ("sav", "Rotor as Savonius\n(T2, T5), 40 m", p.ds * rm.A_F, p.cp_s, "--", -0.8, "top"),
                ("sav3", "Rotor + extension as Savonius\n(T3), 40 m", p.ds * (rm.A_F + rm.A_X), p.cp_s, ":",
@@ -70,9 +72,9 @@ def main():
     edges = np.arange(nu + 1)
     for prt in ("PORTSMOUTH", "BILBAO"):
         pdat = d["ports"][prt]
-        n = sum(pdat["ns"])
+        n = sum(pdat["ns"][s] for s in seasons)
         for key, ls, z in (("hr", "-", "40 m"), ("ht", "--", "55 m")):
-            f = (np.array(pdat[key][0], float) + np.array(pdat[key][1], float)) / n
+            f = sum(np.array(pdat[key][s], float) for s in seasons) / n
             ax2.step(edges[:-1], 100 * f, where="post", ls=ls, color=colors[prt], lw=1.1,
                      label=f"{names[prt]}, {z}")
     ax2.set_xlabel("Hourly wind speed at berth (m/s)")

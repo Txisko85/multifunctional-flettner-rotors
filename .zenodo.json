@@ -2,13 +2,28 @@
   "title": "Multifunctional Flettner rotors: reduced-order models and data (ro-pax Galicia, Portsmouth–Bilbao)",
   "upload_type": "software",
   "version": "1.0.0",
-  "description": "<p>Python reduced-order models and data behind the article <em>Multifunctional Flettner rotors for wind-assisted ship propulsion: a comparative energy assessment of extension, turbine and Savonius-conversion topologies</em> (submitted to Applied Energy).</p><p>The models compare a conventional Flettner rotor with multifunctional rotors (a vertical-axis wind turbine that assists their spin or generates electricity, a telescopic extension, or opening into a Savonius turbine) on the ro-pax ferry Galicia on the Portsmouth–Bilbao route, at sea and at berth, with the 2026 timetable and hourly ERA5 winds for 2015–2024. They include a double-multiple streamtube model of the turbine, validated against wind-tunnel and field data, the hourly simulation of optimal and rule-based switching between modes and a Monte Carlo analysis of coefficient uncertainty.</p><p>Code under the MIT licence; data files under CC BY 4.0 with the third-party attributions given in DATA_LICENSE.md (ERA5 retrieved through Open-Meteo, EMSA THETIS-MRV reports, rotor coefficients digitised from published figures, wind-tunnel data of Battisti et al. (2018), NACA 0021 section data distributed with Sandia's CACTUS code under the BSD 3-Clause licence, and coastlines from Natural Earth, in the public domain).</p>",
+  "description": "<p>Python reduced-order models and data behind the article <em>Multifunctional Flettner rotors for wind-assisted ship propulsion: energy and economic assessment of extension, turbine and Savonius-conversion topologies</em> (submitted to Applied Energy).</p><p>The models compare a conventional Flettner rotor with multifunctional rotors (a vertical-axis wind turbine that assists their spin or generates electricity, a telescopic extension, or opening into a Savonius turbine) and with a taller, a tiltable and a fifth rotor, on the ro-pax ferry Galicia on the Portsmouth–Bilbao route, at sea and at berth, with the 2026 timetable and hourly ERA5 winds for 2015–2024. They include the calibration of the ship model against EU MRV reports, a full-scale check of the rotor model on the route of the Viking Grace, a double-multiple streamtube model of the turbine validated against wind-tunnel and field data, a lifting-line model of deck-mounted rotors, a sway–yaw balance with rudder, the hourly simulation of optimal, causal and predictive switching between modes, the valuation under the EU ETS, the UK ETS and FuelEU Maritime, and a Sobol sensitivity analysis.</p><p>Code under the MIT licence; data files under CC BY 4.0 with the third-party attributions given in DATA_LICENSE.md (ERA5 retrieved through Open-Meteo, EMSA THETIS-MRV reports, rotor coefficients digitised from published figures, wind-tunnel data of Battisti et al. (2018), NACA 0021 section data distributed with Sandia's CACTUS code under the BSD 3-Clause licence, and coastlines from Natural Earth, in the public domain).</p>",
   "creators": [
-    {"name": "Asensio, Francisco Javier", "affiliation": "University of the Basque Country (UPV/EHU)"},
-    {"name": "Saldaña, Gaizka", "affiliation": "University of the Basque Country (UPV/EHU)"},
-    {"name": "González-Pérez, Mikel", "affiliation": "University of the Basque Country (UPV/EHU)"},
-    {"name": "Oñederra, Oier", "affiliation": "University of the Basque Country (UPV/EHU)"},
-    {"name": "Ordoño, Ander", "affiliation": "University of the Basque Country (UPV/EHU)"}
+    {
+      "name": "Asensio, Francisco Javier",
+      "affiliation": "University of the Basque Country (UPV/EHU)"
+    },
+    {
+      "name": "Saldaña, Gaizka",
+      "affiliation": "University of the Basque Country (UPV/EHU)"
+    },
+    {
+      "name": "González-Pérez, Mikel",
+      "affiliation": "University of the Basque Country (UPV/EHU)"
+    },
+    {
+      "name": "Oñederra, Oier",
+      "affiliation": "University of the Basque Country (UPV/EHU)"
+    },
+    {
+      "name": "Ordoño, Ander",
+      "affiliation": "University of the Basque Country (UPV/EHU)"
+    }
   ],
   "keywords": [
     "Flettner rotor",

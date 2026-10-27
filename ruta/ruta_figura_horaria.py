@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Figura del modelo horario (A1, 19-10-2026): (a) ahorro anual de R1 y aumento de T3x por año, 2015-2024, con el
-horario de 2026; (b) aumento de T3x y de T4 sobre R1 frente al tiempo de conmutación tau, con control óptimo
-(programación dinámica, conociendo el viento de la travesía), causal (persistencia L = 6 h) y hora a hora.
+Figura del modelo horario (A1; versión 4, 22-10-2026): (a) ahorro de R1 y aumento de T3x por año, 2015-2024, con el
+horario de 2026 de abril a noviembre (caso base); (b) aumento sobre R1 de la prolongación (T3x), del rotor abatible
+(R1t, comparador) y de la turbina retráctil (T4) frente al tiempo de cada cambio de modo, con control óptimo
+(programación dinámica, conociendo el viento de la travesía), causal (persistencia L = 6 h), hora a hora y, a
+tau = 0,25 h, control predictivo con previsión buena y mala (horizonte de 12 h).
 Lee resultados_horarios.json (ruta_horaria.py). Escribe fig_horaria.png y fig_horaria.pdf.
 """
 import json
@@ -22,7 +24,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 INK, MUTED, GRID = "#0b0b0b", "#52514e", "#e1e0d9"
 BLUE_D, BLUE, BLUE_L = "#104281", "#2a78d6", "#86b6ef"
 ORANGE = "#c96a1b"
+GREEN = "#2f9e6e"
 L_SHOW = 6
+H_SHOW = 12
 
 
 def main():
@@ -47,8 +51,8 @@ def main():
     ax1.set_xticks(x)
     ax1.set_xticklabels([str(y) for y in years], fontsize=6.5)
     ax1.set_ylabel("Fuel saved at sea (t/yr)")
-    ax1.set_ylim(0, 640)
-    ax1.set_yticks(range(0, 501, 100))
+    ax1.set_ylim(0, 560)
+    ax1.set_yticks(range(0, 451, 100))
     ax1.grid(axis="y", color=GRID, lw=0.5)
     ax1.set_axisbelow(True)
     ax1.spines[["top", "right"]].set_visible(False)
@@ -56,39 +60,48 @@ def main():
     ax1.set_title("(a) Year by year, 2026 timetable", loc="left", fontsize=7.5, color=INK)
 
     # (b) coste de conmutación: etiquetas directas al final de cada curva
+    series = (("T3x", r["incrementos_mar"]["T3x"], list(r["tau_h"]), BLUE_D),
+              ("R1t", r["R1t"], list(r["tau_abatible"]), GREEN),
+              ("T4", r["incrementos_mar"]["T4"], list(r["tau_h"]), ORANGE))
     ends = {}
-    for topo, col in (("T3x", BLUE_D), ("T4", ORANGE)):
-        d = r["incrementos_mar"][topo]
+    for topo, d, tl, col in series:
         inst = d["inst"]
-        opt = [inst] + [d[f"optima {t}"] for t in r["tau_h"]]
-        cau = [inst] + [d[f"causal L{L_SHOW} {t}"] for t in r["tau_h"]]
-        gre = [inst] + [d[f"voraz {t}"] for t in r["tau_h"]]
-        ax2.plot(taus, opt, color=col, lw=1.2, marker="o", ms=3.2)
-        ax2.plot(taus, cau, color=col, lw=1.0, ls="--", marker="s", ms=2.8, mfc="white")
-        ax2.plot(taus, gre, color=col, lw=0.9, ls=":", marker="^", ms=3.0, mfc="white")
-        ends[topo] = (opt[-1], cau[-1], gre[-1])
-    xe = taus[-1] + 0.02
-    o, c, g = ends["T3x"]
-    ax2.text(xe, o, "optimal", va="center", fontsize=6.2, color=BLUE_D)
-    ax2.text(xe, c + 1.8, f"causal, {L_SHOW} h", va="center", fontsize=6.2, color=BLUE_D)
-    ax2.text(xe, g - 2.2, "hour by hour", va="center", fontsize=6.2, color=BLUE_D)
-    o, c, g = ends["T4"]
-    ax2.text(xe, max(o, c) + 2.5, "optimal, causal", va="center", fontsize=6.2, color=ORANGE)
-    ax2.text(xe, g, "hour by hour", va="center", fontsize=6.2, color=ORANGE)
+        xs = [0.0] + tl
+        opt = [inst] + [d[f"optima {t}"] for t in tl]
+        cau = [inst] + [d[f"causal L{L_SHOW} {t}"] for t in tl]
+        gre = [inst] + [d[f"voraz {t}"] for t in tl]
+        ax2.plot(xs, opt, color=col, lw=1.2, marker="o", ms=3.2)
+        ax2.plot(xs, cau, color=col, lw=1.0, ls="--", marker="s", ms=2.8, mfc="white")
+        ax2.plot(xs, gre, color=col, lw=0.9, ls=":", marker="^", ms=3.0, mfc="white")
+        for lev, mk in (("buena", "D"), ("mala", "d")):
+            key = f"mpc {lev} H{H_SHOW} 0.25"
+            if key in d:
+                ax2.plot([0.25 + 0.012], [d[key]], mk, ms=3.6, color=col, mfc=col if lev == "buena" else "white",
+                         mew=0.9, ls="none")
+        ends[topo] = (xs[-1], opt[-1], cau[-1], gre[-1])
     ax2.axhline(0, color="#8a897f", lw=0.6)
     ax2.set_xlim(-0.02, 0.69)
-    ax2.set_xticks(taus)
+    ax2.set_xticks([0.0, 0.1, 0.25, 0.5])
     ax2.set_xticklabels(["0", "0.1", "0.25", "0.5"])
     ax2.set_xlabel("Switching time per change of mode, τ (h)")
     ax2.set_ylabel("Fuel saved relative to R1 (t/yr)")
-    ax2.set_ylim(-30, 75)
+    ax2.set_ylim(-25, 90)
     ax2.grid(color=GRID, lw=0.5)
     ax2.set_axisbelow(True)
     ax2.spines[["top", "right"]].set_visible(False)
     from matplotlib.lines import Line2D
-    h = [Line2D([], [], color=BLUE_D, lw=1.2), Line2D([], [], color=ORANGE, lw=1.2)]
-    ax2.legend(h, ["T3x, extension", "T4, retractable turbine"], loc="lower left", frameon=False, fontsize=6.3,
-               handlelength=1.6)
+    h = [Line2D([], [], color=BLUE_D, lw=1.4), Line2D([], [], color=GREEN, lw=1.4),
+         Line2D([], [], color=ORANGE, lw=1.4),
+         Line2D([], [], color=MUTED, lw=1.2, marker="o", ms=3.2),
+         Line2D([], [], color=MUTED, lw=1.0, ls="--", marker="s", ms=2.8, mfc="white"),
+         Line2D([], [], color=MUTED, lw=0.9, ls=":", marker="^", ms=3.0, mfc="white"),
+         Line2D([], [], color=MUTED, marker="D", ms=3.6, ls="none"),
+         Line2D([], [], color=MUTED, marker="d", ms=3.6, mfc="white", ls="none")]
+    ax2.legend(h, ["T3x, extension", "R1t, tiltable rotor", "T4, retractable turbine",
+                   "Optimal, perfect foresight", f"Causal, persistence {L_SHOW} h", "Hour by hour",
+                   f"Predictive, good forecast ({H_SHOW} h)", f"Predictive, poor forecast ({H_SHOW} h)"],
+               loc="lower left", bbox_to_anchor=(0.0, 0.22), frameon=False, fontsize=5.8, handlelength=1.8,
+               ncol=2, columnspacing=0.9, labelspacing=0.35)
     ax2.set_title("(b) Cost of switching", loc="left", fontsize=7.5, color=INK)
 
     fig.subplots_adjust(left=0.07, right=0.99, top=0.91, bottom=0.17, wspace=0.25)
